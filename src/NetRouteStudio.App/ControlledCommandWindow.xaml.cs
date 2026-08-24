@@ -19,4 +19,9 @@ public partial class ControlledCommandWindow : Window
     private void OnOutputTextChanged(object sender, TextChangedEventArgs e) => OutputTextBox.ScrollToEnd();
     private void OnCopyCommand(object sender, RoutedEventArgs e) { if (DataContext is ControlledCommandViewModel vm && !string.IsNullOrWhiteSpace(vm.CommandText)) { Clipboard.SetText(vm.CommandText); vm.StatusMessage = "命令已复制到剪贴板。"; } }
     private void OnCopy(object sender, RoutedEventArgs e) { if (DataContext is ControlledCommandViewModel vm && !string.IsNullOrWhiteSpace(vm.Output)) { Clipboard.SetText(vm.Output); vm.StatusMessage = "输出已复制到剪贴板。"; } }
+    private void OnClearHistory(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is not ControlledCommandViewModel vm || !vm.HasHistory) return;
+        if (MessageBox.Show("确定清空本次应用运行期间的全部命令执行记录吗？", "清空执行记录", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes) vm.ClearHistory();
+    }
 }

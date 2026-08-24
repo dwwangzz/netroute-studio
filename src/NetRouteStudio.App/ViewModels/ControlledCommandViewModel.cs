@@ -12,6 +12,7 @@ public sealed partial class ControlledCommandViewModel(IControlledCommandService
     [ObservableProperty] private string _statusMessage = "仅允许界面列出的白名单网络诊断命令。";
     [ObservableProperty] private string _errorMessage = string.Empty;
     [ObservableProperty] private bool _isRunning;
+    [ObservableProperty] private bool _hasHistory;
     [ObservableProperty] private bool _isWhitelistEnabled = true;
     public ObservableCollection<ControlledCommandResult> History { get; } = [];
     public IReadOnlyList<ControlledCommandExample> Examples { get; } = service.Examples;
@@ -21,11 +22,20 @@ public sealed partial class ControlledCommandViewModel(IControlledCommandService
     {
         if (IsRunning) return;
         IsRunning = true; ErrorMessage = string.Empty; Output = string.Empty; StatusMessage = "正在执行…"; _cancellation = new();
-        try { var result = await service.ExecuteAsync(CommandText, IsWhitelistEnabled, new Progress<string>(line => Output += line + Environment.NewLine), _cancellation.Token); History.Insert(0, result); Output = result.Output; StatusMessage = $"执行完成：{result.StatusDisplay}，耗时 {result.Duration.TotalSeconds:F1} 秒。"; }
+        try { var result = await service.ExecuteAsync(CommandText, IsWhitelistEnabled, new Progress<string>(line => Output += line + Environment.NewLine), _cancellation.Token); History.Insert(0, result); HasHistory = true; Output = result.Output; StatusMessage = $"执行完成：{result.StatusDisplay}，耗时 {result.Duration.TotalSeconds:F1} 秒。"; }
         catch (Exception exception) { ErrorMessage = exception.Message; StatusMessage = "命令未执行或执行失败。"; }
         finally { _cancellation?.Dispose(); _cancellation = null; IsRunning = false; }
     }
     [RelayCommand] private void Cancel() => _cancellation?.Cancel();
     partial void OnSelectedHistoryChanged(ControlledCommandResult? value) { if (value is not null) Output = value.Output; }
     [ObservableProperty] private ControlledCommandResult? _selectedHistory;
+
+    public void ClearHistory()
+    {
+        History.Clear();
+        SelectedHistory = null;
+        Output = string.Empty;
+        HasHistory = false;
+        StatusMessage = "本次窗口的命令执行记录已清空。";
+    }
 }

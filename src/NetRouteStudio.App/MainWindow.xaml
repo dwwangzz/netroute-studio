@@ -16,11 +16,11 @@
             <Border Grid.Column="0" Background="White" CornerRadius="8" Padding="18">
                 <StackPanel>
                     <TextBlock Text="功能模块" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,18" />
-                    <TextBlock Text="✓  应用基础" Foreground="#6B7280" Margin="0,7" />
-                    <TextBlock Text="✓  网卡管理" Foreground="#6B7280" Margin="0,7" />
-                    <TextBlock Text="✓  路由查看" Foreground="#6B7280" Margin="0,7" />
-                    <TextBlock Text="✓  路由匹配" Foreground="#6B7280" Margin="0,7" />
-                    <TextBlock Text="●  IPv4 路由管理" Foreground="{StaticResource PrimaryBrush}" FontWeight="SemiBold" Margin="0,7" />
+                    <Button x:Name="FoundationButton" Content="应用基础" Click="OnShowFoundation" HorizontalContentAlignment="Left" Margin="0,3" Padding="8,7" />
+                    <Button x:Name="AdapterButton" Content="网卡管理" Click="OnShowAdapters" HorizontalContentAlignment="Left" Margin="0,3" Padding="8,7" />
+                    <Button x:Name="RouteTableButton" Content="路由查看" Click="OnShowRouteTable" HorizontalContentAlignment="Left" Margin="0,3" Padding="8,7" />
+                    <Button x:Name="RouteMatchButton" Content="路由匹配" Click="OnShowRouteMatch" HorizontalContentAlignment="Left" Margin="0,3" Padding="8,7" />
+                    <Button x:Name="RouteManagementButton" Content="IPv4 路由管理" Click="OnShowRouteManagement" HorizontalContentAlignment="Left" Margin="0,3" Padding="8,7" />
                     <Button Content="网卡跃点管理" Click="OnOpenIPv4InterfaceMetric" HorizontalContentAlignment="Left"
                             Margin="0,5" Padding="8,7" Background="#ECFDF5" Foreground="#047857" BorderBrush="#A7F3D0"
                             ToolTip="查看并设置 IPv4、IPv6 接口自动或手动 Metric" />
@@ -38,7 +38,8 @@
                             ToolTip="执行经过白名单和参数校验的 Windows 网络命令" />
                 </StackPanel>
             </Border>
-            <Border Grid.Column="2" Background="White" CornerRadius="8" Padding="24">
+            <ContentControl x:Name="ModuleContent" Grid.Column="2" Visibility="Collapsed" />
+            <Border x:Name="RouteManagementContent" Grid.Column="2" Background="White" CornerRadius="8" Padding="24">
                 <Grid>
                     <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
                     <Grid Grid.Row="0">
@@ -114,6 +115,6 @@
                 </Grid>
             </Border>
         </Grid>
-        <Border Grid.Row="2" Background="#E5E7EB" Padding="28,0"><TextBlock Text="{Binding StatusMessage}" VerticalAlignment="Center" Foreground="#4B5563" /></Border>
+        <Border Grid.Row="2" Background="#E5E7EB" Padding="28,0"><TextBlock x:Name="StatusText" Text="{Binding StatusMessage}" VerticalAlignment="Center" Foreground="#4B5563" /></Border>
     </Grid>
 </Window>
