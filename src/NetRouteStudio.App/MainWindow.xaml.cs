@@ -10,18 +10,21 @@ public partial class MainWindow : Window
     private readonly IIPv4InterfaceMetricDialogService _metricDialogService;
     private readonly IRouteBackupDialogService _backupDialogService;
     private readonly IIPv6ResetDialogService _ipv6ResetDialogService;
+    private readonly INetworkTestDialogService _networkTestDialogService;
 
     public MainWindow(
         RouteManagementViewModel viewModel,
         IIPv4InterfaceMetricDialogService metricDialogService,
         IRouteBackupDialogService backupDialogService,
-        IIPv6ResetDialogService ipv6ResetDialogService)
+        IIPv6ResetDialogService ipv6ResetDialogService,
+        INetworkTestDialogService networkTestDialogService)
     {
         InitializeComponent();
         _viewModel = viewModel;
         _metricDialogService = metricDialogService;
         _backupDialogService = backupDialogService;
         _ipv6ResetDialogService = ipv6ResetDialogService;
+        _networkTestDialogService = networkTestDialogService;
         DataContext = viewModel;
         Loaded += OnLoaded;
     }
@@ -40,4 +43,7 @@ public partial class MainWindow : Window
 
     private void OnOpenIPv6Reset(object sender, RoutedEventArgs e) =>
         _ipv6ResetDialogService.Show();
+
+    private void OnOpenNetworkTest(object sender, RoutedEventArgs e) =>
+        _networkTestDialogService.Show();
 }

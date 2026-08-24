@@ -30,7 +30,9 @@
                     <Button Content="IP 绑定重置" Click="OnOpenIPv6Reset" HorizontalContentAlignment="Left"
                             Margin="0,5" Padding="8,7" Background="#FEF2F2" Foreground="#B91C1C" BorderBrush="#FECACA"
                             ToolTip="安全重置单张网卡的 IPv4（ms_tcpip）或 IPv6（ms_tcpip6）绑定" />
-                    <TextBlock Text="○  网络测试" Foreground="#9CA3AF" Margin="0,7" />
+                    <Button Content="网络测试" Click="OnOpenNetworkTest" HorizontalContentAlignment="Left"
+                            Margin="0,5" Padding="8,7" Background="#F0FDF4" Foreground="#15803D" BorderBrush="#BBF7D0"
+                            ToolTip="执行 DNS、Ping、路由命中和 Tracert 只读诊断" />
                 </StackPanel>
             </Border>
             <Border Grid.Column="2" Background="White" CornerRadius="8" Padding="24">

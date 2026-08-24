@@ -1,0 +1,20 @@
+<Window x:Class="NetRouteStudio.App.NetworkTestWindow" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="网络测试" Width="1080" Height="720" MinWidth="880" MinHeight="580" WindowStartupLocation="CenterOwner" Background="#F3F6FA">
+    <Grid Margin="22">
+        <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+        <StackPanel><TextBlock Text="网络测试" FontSize="24" FontWeight="SemiBold"/><TextBlock Text="执行 DNS、Ping、路由命中和 Tracert 只读诊断，不修改网络配置。" Foreground="#6B7280" Margin="0,5,0,0"/></StackPanel>
+        <Grid Grid.Row="1" Margin="0,16,0,10"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+            <TextBox Text="{Binding Target, UpdateSourceTrigger=PropertyChanged}" Padding="10,7" FontSize="14" ToolTip="例如：example.com、192.168.1.1 或 2001:db8::1"/>
+            <Button Grid.Column="1" Command="{Binding StartCommand}" Content="开始测试" Padding="18,8" Margin="10,0,0,0" Background="#2563EB" Foreground="White" BorderThickness="0"/>
+            <Button Grid.Column="2" Command="{Binding CancelCommand}" Content="取消" Padding="18,8" Margin="8,0,0,0"/>
+        </Grid>
+        <StackPanel Grid.Row="2" Margin="0,0,0,10"><TextBlock Text="{Binding StatusMessage}" Foreground="#4B5563"/><TextBlock Text="{Binding Summary}" Foreground="#047857" FontWeight="SemiBold" Margin="0,4,0,0"/><TextBlock Text="{Binding ErrorMessage}" Foreground="#B91C1C" TextWrapping="Wrap" Margin="0,4,0,0"/></StackPanel>
+        <TabControl Grid.Row="3">
+            <TabItem Header="DNS 解析"><ListBox ItemsSource="{Binding ResolvedAddresses}" FontFamily="Consolas" Padding="8"/></TabItem>
+            <TabItem Header="Ping"><DataGrid ItemsSource="{Binding PingResults}" IsReadOnly="True" AutoGenerateColumns="False" CanUserAddRows="False"><DataGrid.Columns><DataGridTextColumn Header="地址" Binding="{Binding Address}" Width="*"/><DataGridTextColumn Header="序号" Binding="{Binding Sequence}" Width="70"/><DataGridTextColumn Header="状态" Binding="{Binding Status}" Width="120"/><DataGridTextColumn Header="耗时" Binding="{Binding LatencyDisplay}" Width="90"/><DataGridTextColumn Header="TTL" Binding="{Binding TimeToLive}" Width="70"/><DataGridTextColumn Header="说明" Binding="{Binding ErrorMessage}" Width="180"/></DataGrid.Columns></DataGrid></TabItem>
+            <TabItem Header="路由命中"><DataGrid ItemsSource="{Binding RouteMatches}" IsReadOnly="True" AutoGenerateColumns="False" CanUserAddRows="False"><DataGrid.Columns><DataGridTextColumn Header="目标地址" Binding="{Binding TargetAddress}" Width="*"/><DataGridTextColumn Header="目标前缀" Binding="{Binding MatchedRoute.DestinationPrefix}" Width="160"/><DataGridTextColumn Header="下一跳" Binding="{Binding MatchedRoute.NextHop}" Width="150"/><DataGridTextColumn Header="接口" Binding="{Binding MatchedRoute.InterfaceAlias}" Width="140"/><DataGridCheckBoxColumn Header="原生一致" Binding="{Binding IsNativeMatch}" Width="80"/><DataGridTextColumn Header="判断理由" Binding="{Binding DecisionReason}" Width="240"/></DataGrid.Columns></DataGrid></TabItem>
+            <TabItem Header="Tracert"><DataGrid ItemsSource="{Binding TraceHops}" IsReadOnly="True" AutoGenerateColumns="False" CanUserAddRows="False"><DataGrid.Columns><DataGridTextColumn Header="跳数" Binding="{Binding Hop}" Width="70"/><DataGridTextColumn Header="节点地址" Binding="{Binding Address}" Width="*"/><DataGridTextColumn Header="状态" Binding="{Binding Status}" Width="150"/><DataGridTextColumn Header="耗时" Binding="{Binding LatencyDisplay}" Width="90"/><DataGridTextColumn Header="说明" Binding="{Binding ErrorMessage}" Width="200"/></DataGrid.Columns></DataGrid></TabItem>
+        </TabControl>
+        <Button Grid.Row="4" Content="关闭" IsCancel="True" HorizontalAlignment="Right" Padding="20,8" Margin="0,14,0,0"/>
+    </Grid>
+</Window>

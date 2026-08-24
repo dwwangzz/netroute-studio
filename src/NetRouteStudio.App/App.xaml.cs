@@ -72,6 +72,8 @@ public partial class App : Application
                 services.AddSingleton<INetworkAdapterService, NetworkAdapterService>();
                 services.AddSingleton<IRouteTableService, RouteTableService>();
                 services.AddSingleton<IRouteMatchService, RouteMatchService>();
+                services.AddSingleton<INetworkProbe, NetworkProbe>();
+                services.AddSingleton<INetworkTestService, NetworkTestService>();
                 services.AddSingleton<IIPv4RouteManagementService, IPv4RouteManagementService>();
                 services.AddSingleton<IIPv4InterfaceMetricService, IPv4InterfaceMetricService>();
                 services.AddSingleton<IIPv6InterfaceMetricService, IPv6InterfaceMetricService>();
@@ -85,6 +87,7 @@ public partial class App : Application
                 services.AddSingleton<IRouteBackupFileDialogService, RouteBackupFileDialogService>();
                 services.AddSingleton<IRouteBackupDialogService, RouteBackupDialogService>();
                 services.AddSingleton<IIPv6ResetDialogService, IPv6ResetDialogService>();
+                services.AddSingleton<INetworkTestDialogService, NetworkTestDialogService>();
                 services.AddSingleton<GlobalExceptionHandler>();
                 services.AddSingleton<MainWindowViewModel>();
                 services.AddSingleton<RouteTableViewModel>();
@@ -96,6 +99,8 @@ public partial class App : Application
                 services.AddTransient<RouteBackupWindow>();
                 services.AddTransient<IPv6ResetViewModel>();
                 services.AddTransient<IPv6ResetWindow>();
+                services.AddTransient<NetworkTestViewModel>();
+                services.AddTransient<NetworkTestWindow>();
                 services.AddSingleton<MainWindow>();
             })
             .Build();
