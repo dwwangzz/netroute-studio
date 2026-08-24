@@ -22,6 +22,7 @@ public sealed class ControlledCommandServiceTests
     [InlineData("arp -a", "arp.exe")]
     [InlineData("nslookup example.com 1.1.1.1", "nslookup.exe")]
     [InlineData("netstat -ano", "netstat.exe")]
+    [InlineData("telnet 192.168.1.1 80", "telnet.exe")]
     public void 白名单命令_应解析为固定可执行文件(string input, string executable) =>
         _service.Parse(input).Executable.Should().Be(executable);
 
@@ -35,14 +36,23 @@ public sealed class ControlledCommandServiceTests
     [InlineData("ipconfig /flushdns")]
     [InlineData("netsh interface ipv4 set address name=ETH static 1.1.1.1 255.255.255.0")]
     [InlineData("nbtstat -R")]
+    [InlineData("telnet 192.168.1.1 70000")]
     public void 非白名单或危险参数_应拒绝(string input) =>
         _service.Invoking(service => service.Parse(input)).Should().Throw<ArgumentException>();
+
+    [Fact]
+    public void 关闭白名单_应允许Path程序但继续阻止命令解释器和路径()
+    {
+        _service.Parse("where dotnet", false).Executable.Should().Be("where.exe");
+        _service.Invoking(service => service.Parse("powershell -EncodedCommand AAAA", false)).Should().Throw<ArgumentException>();
+        _service.Invoking(service => service.Parse("C:\\Windows\\System32\\whoami.exe", false)).Should().Throw<ArgumentException>();
+    }
 
     [Fact]
     public async Task 执行Ping_应按行推送且不产生乱码替换字符()
     {
         var lines = new List<string>();
-        var result = await _service.ExecuteAsync("ping -n 2 127.0.0.1", new InlineProgress(lines.Add));
+        var result = await _service.ExecuteAsync("ping -n 2 127.0.0.1", outputProgress: new InlineProgress(lines.Add));
         result.ExitCode.Should().Be(0);
         result.StandardOutput.Should().NotContain("�");
         lines.Should().HaveCountGreaterThan(2);

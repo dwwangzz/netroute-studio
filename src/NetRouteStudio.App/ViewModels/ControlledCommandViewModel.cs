@@ -12,6 +12,7 @@ public sealed partial class ControlledCommandViewModel(IControlledCommandService
     [ObservableProperty] private string _statusMessage = "仅允许界面列出的白名单网络诊断命令。";
     [ObservableProperty] private string _errorMessage = string.Empty;
     [ObservableProperty] private bool _isRunning;
+    [ObservableProperty] private bool _isWhitelistEnabled = true;
     public ObservableCollection<ControlledCommandResult> History { get; } = [];
     public IReadOnlyList<ControlledCommandExample> Examples { get; } = service.Examples;
     [ObservableProperty] private ControlledCommandExample? _selectedExample;
@@ -20,7 +21,7 @@ public sealed partial class ControlledCommandViewModel(IControlledCommandService
     {
         if (IsRunning) return;
         IsRunning = true; ErrorMessage = string.Empty; Output = string.Empty; StatusMessage = "正在执行…"; _cancellation = new();
-        try { var result = await service.ExecuteAsync(CommandText, new Progress<string>(line => Output += line + Environment.NewLine), _cancellation.Token); History.Insert(0, result); Output = result.Output; StatusMessage = $"执行完成：{result.StatusDisplay}，耗时 {result.Duration.TotalSeconds:F1} 秒。"; }
+        try { var result = await service.ExecuteAsync(CommandText, IsWhitelistEnabled, new Progress<string>(line => Output += line + Environment.NewLine), _cancellation.Token); History.Insert(0, result); Output = result.Output; StatusMessage = $"执行完成：{result.StatusDisplay}，耗时 {result.Duration.TotalSeconds:F1} 秒。"; }
         catch (Exception exception) { ErrorMessage = exception.Message; StatusMessage = "命令未执行或执行失败。"; }
         finally { _cancellation?.Dispose(); _cancellation = null; IsRunning = false; }
     }

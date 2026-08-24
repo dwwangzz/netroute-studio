@@ -3,13 +3,15 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Globalization;
 using System.IO;
+using System.ComponentModel;
 using NetRouteStudio.App.Models;
 
 namespace NetRouteStudio.App.Services;
 
 public sealed partial class ControlledCommandService : IControlledCommandService
 {
-    private static readonly HashSet<string> Allowed = new(StringComparer.OrdinalIgnoreCase) { "ping", "tracert", "pathping", "ipconfig", "route", "arp", "nslookup", "netstat", "getmac", "hostname", "nbtstat", "netsh" };
+    private static readonly HashSet<string> Allowed = new(StringComparer.OrdinalIgnoreCase) { "ping", "tracert", "pathping", "ipconfig", "route", "arp", "nslookup", "netstat", "getmac", "hostname", "nbtstat", "netsh", "telnet" };
+    private static readonly HashSet<string> BlockedHosts = new(StringComparer.OrdinalIgnoreCase) { "cmd", "cmd.exe", "powershell", "powershell.exe", "pwsh", "pwsh.exe", "wscript", "wscript.exe", "cscript", "cscript.exe", "mshta", "mshta.exe", "rundll32", "rundll32.exe" };
     private static readonly TimeSpan Timeout = TimeSpan.FromSeconds(60);
 
     public IReadOnlyList<ControlledCommandExample> Examples { get; } =
@@ -36,27 +38,37 @@ public sealed partial class ControlledCommandService : IControlledCommandService
         new("Netsh", "显示 IPv4 接口配置", "netsh interface ipv4 show config"),
         new("Netsh", "显示 IPv6 接口", "netsh interface ipv6 show interfaces"),
         new("无线", "显示无线网卡状态", "netsh wlan show interfaces"),
-        new("无线", "显示附近无线网络", "netsh wlan show networks")
+        new("无线", "显示附近无线网络", "netsh wlan show networks"),
+        new("端口", "使用 Telnet 测试目标端口", "telnet 192.168.1.1 80")
     ];
 
-    public ControlledCommand Parse(string input)
+    public ControlledCommand Parse(string input, bool whitelistEnabled = true)
     {
         if (string.IsNullOrWhiteSpace(input)) throw new ArgumentException("请输入要执行的白名单网络命令。");
         if (UnsafeCharacterRegex().IsMatch(input)) throw new ArgumentException("命令包含连接符、重定向符或换行，已拒绝执行。");
         var tokens = Tokenize(input);
-        if (tokens.Count == 0 || !Allowed.Contains(tokens[0])) throw new ArgumentException("该命令不在允许执行的网络命令白名单中。");
+        if (tokens.Count == 0) throw new ArgumentException("请输入要执行的命令。");
+        if (!ExecutableNameRegex().IsMatch(tokens[0]) || BlockedHosts.Contains(tokens[0])) throw new ArgumentException("不允许启动命令解释器、脚本宿主或包含路径的程序。");
+        if (whitelistEnabled && !Allowed.Contains(tokens[0])) throw new ArgumentException("该命令不在允许执行的网络命令白名单中。");
         var command = tokens[0].ToLowerInvariant();
         var arguments = tokens.Skip(1).ToArray();
-        Validate(command, arguments);
-        return new ControlledCommand(string.Join(" ", tokens), command + ".exe", arguments);
+        if (whitelistEnabled) Validate(command, arguments);
+        return new ControlledCommand(string.Join(" ", tokens), command.EndsWith(".exe", StringComparison.OrdinalIgnoreCase) ? command : command + ".exe", arguments);
     }
 
-    public async Task<ControlledCommandResult> ExecuteAsync(string input, IProgress<string>? outputProgress = null, CancellationToken cancellationToken = default)
+    public async Task<ControlledCommandResult> ExecuteAsync(string input, bool whitelistEnabled = true, IProgress<string>? outputProgress = null, CancellationToken cancellationToken = default)
     {
-        var command = Parse(input);
+        var command = Parse(input, whitelistEnabled);
         var started = DateTimeOffset.Now;
         using var process = new Process { StartInfo = CreateStartInfo(command) };
-        if (!process.Start()) throw new InvalidOperationException($"无法启动 {command.Executable}。");
+        try
+        {
+            if (!process.Start()) throw new InvalidOperationException($"无法启动 {command.Executable}。");
+        }
+        catch (Win32Exception exception) when (command.Executable.Equals("telnet.exe", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException("系统未安装 Telnet Client，请在 Windows 可选功能中启用后重试。", exception);
+        }
         var standardOutput = new StringBuilder();
         var standardError = new StringBuilder();
         var outputTask = ReadLinesAsync(process.StandardOutput, standardOutput, outputProgress, string.Empty);
@@ -107,6 +119,13 @@ public sealed partial class ControlledCommandService : IControlledCommandService
         if (command == "getmac" && arguments.Any(value => !value.Equals("/v", StringComparison.OrdinalIgnoreCase) && !value.Equals("/fo", StringComparison.OrdinalIgnoreCase) && !value.Equals("list", StringComparison.OrdinalIgnoreCase))) throw new ArgumentException("getmac 仅允许只读显示参数。");
         if (command == "nbtstat" && arguments.Any(value => !new[] { "-a", "-A", "-c", "-n", "-r", "-s", "-S" }.Contains(value, StringComparer.Ordinal))) throw new ArgumentException("nbtstat 仅允许只读查询参数。");
         if (command == "netsh" && !IsAllowedNetsh(arguments)) throw new ArgumentException("netsh 仅允许预设的 show 查询命令。");
+        if (command == "telnet") ValidateTelnet(arguments);
+    }
+
+    private static void ValidateTelnet(IReadOnlyList<string> arguments)
+    {
+        if (arguments.Count is < 1 or > 2 || !HostRegex().IsMatch(arguments[0])) throw new ArgumentException("telnet 仅允许目标主机和可选端口，例如 telnet 192.168.1.1 80。");
+        if (arguments.Count == 2 && (!int.TryParse(arguments[1], out var port) || port is < 1 or > 65535)) throw new ArgumentException("Telnet 端口必须为 1–65535。");
     }
 
     private static bool IsAllowedNetsh(IReadOnlyList<string> arguments)
@@ -127,4 +146,8 @@ public sealed partial class ControlledCommandService : IControlledCommandService
     private static partial Regex UnsafeCharacterRegex();
     [GeneratedRegex("\\\"([^\\\"]*)\\\"|(\\S+)")]
     private static partial Regex TokenRegex();
+    [GeneratedRegex("^[a-zA-Z0-9_.-]+$")]
+    private static partial Regex ExecutableNameRegex();
+    [GeneratedRegex("^[a-zA-Z0-9_.:-]+$")]
+    private static partial Regex HostRegex();
 }
