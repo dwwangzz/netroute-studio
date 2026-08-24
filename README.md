@@ -1,45 +1,52 @@
 # NetRoute Studio
 
-Windows 可视化网络策略管理应用。
+NetRoute Studio 是基于 .NET 8 与 WPF 开发的 Windows 可视化网络策略管理工具，提供网卡、路由、接口跃点、备份恢复、协议绑定重置和网络诊断能力。
 
-## 开发环境
+## 功能模块
 
-- Windows 10/11
-- .NET 8 SDK
-- Visual Studio 2022（可选，需安装“.NET 桌面开发”工作负载）
+- 应用基础：依赖注入、日志、管理员权限检测和全局异常处理。
+- 网卡管理：查看物理/虚拟网卡、IPv4/IPv6 地址、DNS、网关、状态和接口 Metric。
+- 路由查看：分页查看和搜索 IPv4/IPv6 路由。
+- 路由匹配：计算目标 IP 或域名的命中路由，并与 Windows 原生结果交叉验证。
+- IPv4 路由管理：单条及批量新增、修改、删除，支持临时、永久和在链路上路由。
+- 网卡跃点管理：查看和设置 IPv4/IPv6 自动或手动接口 Metric。
+- 备份恢复：使用带版本、主机信息和校验摘要的 JSON 备份，对比并选择性恢复路由差异。
+- IP 绑定重置：安全重置所选网卡的 IPv4（`ms_tcpip`）或 IPv6（`ms_tcpip6`）绑定。
+- 网络测试：DNS、Ping、路由命中及 Tracert 诊断。
+- 受控网络命令：白名单、参数校验、实时输出、取消、历史记录和 Telnet 端口测试。
+
+## 运行要求
+
+- Windows 10 或 Windows 11 x64
+- 框架依赖发布包需要 .NET 8 Desktop Runtime
+- 修改路由、接口 Metric 或协议绑定时需要管理员权限
+- Telnet 命令需要启用 Windows Telnet Client 可选功能
+
+建议右键选择“以管理员身份运行”。只读页面可在非管理员模式下使用，但部分网络接口可能因系统权限策略无法读取。
+
+## 安全说明
+
+- 修改或删除路由、重置协议绑定可能立即中断网络连接。
+- 修改操作提供命令预览、确认和结果验证。
+- 受控命令默认启用白名单；关闭仅在当前窗口有效，且仍禁止命令解释器、脚本宿主、路径启动和连接/重定向字符。
+- 路由备份包含主机及网络配置信息，请妥善保管。
 
 ## 构建与测试
 
 ```powershell
 dotnet restore NetRouteStudio.sln --configfile NuGet.Config --disable-parallel
-dotnet build NetRouteStudio.sln --no-restore --maxcpucount:1
-dotnet test NetRouteStudio.sln --no-build --maxcpucount:1
+dotnet build NetRouteStudio.sln --no-restore --configuration Debug --maxcpucount:1
+dotnet test NetRouteStudio.sln --no-build --configuration Debug --maxcpucount:1
 ```
 
-当前解决方案包含 WPF 主项目及引用它的测试项目。使用单 MSBuild 节点可避免部分 Windows 环境并行调度 WPF 构建时出现无错误退出。
+生成框架依赖的 Windows x64 发布目录：
 
-## 日志位置
-
-运行日志默认写入：
-
-```text
-%LOCALAPPDATA%\NetRouteStudio\logs
+```powershell
+dotnet publish src/NetRouteStudio.App/NetRouteStudio.App.csproj --no-restore --configuration Release --runtime win-x64 --self-contained false --output artifacts/release/NetRouteStudio-1.0.0-win-x64
 ```
 
-日志按天滚动，默认保留 14 个文件。
+## 日志与版本
 
-## 当前进度
+日志写入 `%LOCALAPPDATA%\NetRouteStudio\logs`，按天滚动并保留 14 个文件。
 
-第 1 模块“应用基础模块”：已验收。
-
-第 2 模块“Windows 网络读取基础设施”：已验收。
-
-第 3 模块“网卡管理”：已验收。
-
-第 4 模块“路由只读管理”：已验收。
-
-第 5 模块补充：支持域名解析后的全部 IPv4/IPv6 地址匹配。
-
-第 5 模块“路由匹配”：已验收。
-
-第 6 模块“IPv4 路由管理（单条操作）”：等待人工验收。
+当前稳定版本：`1.0.0`。详细变化见 [CHANGELOG.md](CHANGELOG.md)。
