@@ -7,9 +7,9 @@
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <AssemblyName>NetRouteStudio.App</AssemblyName>
     <RootNamespace>NetRouteStudio.App</RootNamespace>
-    <Version>1.0.2</Version>
-    <AssemblyVersion>1.0.2.0</AssemblyVersion>
-    <FileVersion>1.0.2.0</FileVersion>
+    <Version>1.0.3</Version>
+    <AssemblyVersion>1.0.3.0</AssemblyVersion>
+    <FileVersion>1.0.3.0</FileVersion>
     <Product>NetRoute Studio</Product>
     <Description>Windows 可视化网络策略管理工具</Description>
     <ApplicationIcon>Assets\NetRouteStudio.ico</ApplicationIcon>

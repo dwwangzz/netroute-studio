@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 发布版本（例如 v1.0.2）
+        description: 发布版本（例如 v1.0.3）
         required: true
         type: string
       prerelease:
@@ -73,13 +73,38 @@ jobs:
           -p:IncludeSourceRevisionInInformationalVersion=false
           -p:DebugType=None -p:DebugSymbols=false
 
-      - name: 打包并生成 SHA-256
+      - name: 打包免安装版
         shell: pwsh
         run: |
           $zip = "artifacts/${{ steps.version.outputs.package_name }}.zip"
           Compress-Archive -Path artifacts/publish/* -DestinationPath $zip
-          $hash = (Get-FileHash -Algorithm SHA256 $zip).Hash.ToLowerInvariant()
-          "$hash  $([IO.Path]::GetFileName($zip))" | Set-Content -Encoding ascii "$zip.sha256"
+
+      - name: 安装 Inno Setup
+        run: choco install innosetup --no-progress -y
+
+      - name: 生成安装程序
+        shell: pwsh
+        run: |
+          $sourceDir = (Resolve-Path "artifacts/publish").Path
+          $outputDir = (Resolve-Path "artifacts").Path
+          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" `
+            "/DMyAppVersion=${{ steps.version.outputs.assembly_version }}" `
+            "/DNumericVersion=${{ steps.version.outputs.numeric_version }}" `
+            "/DSourceDir=$sourceDir" `
+            "/DOutputDir=$outputDir" `
+            "installer\NetRouteStudio.iss"
+
+      - name: 生成 SHA-256
+        shell: pwsh
+        run: |
+          $files = @(
+            "artifacts/${{ steps.version.outputs.package_name }}.zip",
+            "artifacts/NetRouteStudio-v${{ steps.version.outputs.assembly_version }}-win-x64-setup.exe"
+          )
+          foreach ($file in $files) {
+            $hash = (Get-FileHash -Algorithm SHA256 $file).Hash.ToLowerInvariant()
+            "$hash  $([IO.Path]::GetFileName($file))" | Set-Content -Encoding ascii "$file.sha256"
+          }
 
       - name: 创建 GitHub Release
         uses: softprops/action-gh-release@v2
@@ -93,3 +118,5 @@ jobs:
           files: |
             artifacts/${{ steps.version.outputs.package_name }}.zip
             artifacts/${{ steps.version.outputs.package_name }}.zip.sha256
+            artifacts/NetRouteStudio-v${{ steps.version.outputs.assembly_version }}-win-x64-setup.exe
+            artifacts/NetRouteStudio-v${{ steps.version.outputs.assembly_version }}-win-x64-setup.exe.sha256
