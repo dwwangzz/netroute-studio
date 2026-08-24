@@ -21,11 +21,34 @@ public partial class IPv6ResetWindow : Window
         await _viewModel.RefreshAsync();
     }
 
-    private void OnCopyRecoveryCommand(object sender, RoutedEventArgs e)
+    private async void OnCopyIPv4RecoveryCommand(object sender, RoutedEventArgs e)
     {
-        if (!string.IsNullOrWhiteSpace(_viewModel.ManualRecoveryCommand))
+        await CopyRecoveryCommandAsync(_viewModel.Ipv4ManualRecoveryCommand, CopyIPv4RecoveryButton);
+    }
+
+    private async void OnCopyIPv6RecoveryCommand(object sender, RoutedEventArgs e)
+    {
+        await CopyRecoveryCommandAsync(_viewModel.ManualRecoveryCommand, CopyIPv6RecoveryButton);
+    }
+
+    private async Task CopyRecoveryCommandAsync(string command, System.Windows.Controls.Button button)
+    {
+        if (string.IsNullOrWhiteSpace(command)) return;
+        try
         {
-            Clipboard.SetText(_viewModel.ManualRecoveryCommand);
+            Clipboard.SetText(command);
+            _viewModel.ErrorMessage = string.Empty;
+            _viewModel.CopyStatusMessage = "手工恢复命令已复制到剪贴板。";
+            button.Content = "已复制";
+            await Task.Delay(TimeSpan.FromSeconds(2));
+            button.Content = "复制手工恢复命令";
+            _viewModel.CopyStatusMessage = string.Empty;
+        }
+        catch (Exception exception)
+        {
+            button.Content = "复制手工恢复命令";
+            _viewModel.CopyStatusMessage = string.Empty;
+            _viewModel.ErrorMessage = $"复制失败：{exception.Message}";
         }
     }
 }

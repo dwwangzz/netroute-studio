@@ -1,54 +1,46 @@
-<Window x:Class="NetRouteStudio.App.IPv6ResetWindow"
-        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="IPv6 重置" Width="1020" Height="650" MinWidth="840" MinHeight="540"
-        WindowStartupLocation="CenterOwner" Background="#F3F6FA">
+<Window x:Class="NetRouteStudio.App.IPv6ResetWindow" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="IP 绑定重置" Width="1120" Height="700" MinWidth="900" MinHeight="580" WindowStartupLocation="CenterOwner" Background="#F3F6FA">
     <Grid Margin="22">
-        <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="*" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+        <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
         <Grid>
-            <StackPanel>
-                <TextBlock Text="IPv6 绑定重置" FontSize="24" FontWeight="SemiBold" />
-                <TextBlock Text="仅重置所选网卡的 ms_tcpip6 绑定，不修改 IPv4、DNS、网关或接口 Metric。" Foreground="#6B7280" Margin="0,5,0,0" />
-            </StackPanel>
-            <Button Command="{Binding RefreshCommand}" Content="刷新网卡" HorizontalAlignment="Right" Padding="14,7" />
+            <StackPanel><TextBlock Text="IP 绑定重置" FontSize="24" FontWeight="SemiBold"/><TextBlock Text="分别重置所选网卡的 IPv4 或 IPv6 协议绑定，不修改地址、DNS、网关或接口 Metric。" Foreground="#6B7280" Margin="0,5,0,0"/></StackPanel>
+            <Button Command="{Binding RefreshCommand}" Content="刷新网卡" HorizontalAlignment="Right" Padding="14,7"/>
         </Grid>
         <Border Grid.Row="1" Background="#FEF2F2" BorderBrush="#FCA5A5" BorderThickness="1" CornerRadius="6" Padding="10" Margin="0,14">
-            <TextBlock Text="重置过程会短暂禁用再启用 IPv6，可能中断该网卡上的 IPv6 连接。请勿选择当前关键连接，除非已准备好手工恢复。"
-                       Foreground="#B91C1C" TextWrapping="Wrap" />
+            <TextBlock Text="重置会短暂禁用再启用所选协议，可能中断该网卡上的 IPv4 或 IPv6 连接。请确认连接允许短暂中断，并留意手工恢复命令。" Foreground="#B91C1C" TextWrapping="Wrap"/>
         </Border>
         <Grid Grid.Row="2">
-            <Grid.ColumnDefinitions><ColumnDefinition Width="1.45*" /><ColumnDefinition Width="18" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
-            <DataGrid ItemsSource="{Binding Adapters}" SelectedItem="{Binding SelectedAdapter}" AutoGenerateColumns="False"
-                      IsReadOnly="True" CanUserAddRows="False" SelectionMode="Single" SelectionUnit="FullRow"
-                      HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+            <Grid.ColumnDefinitions><ColumnDefinition Width="1.35*"/><ColumnDefinition Width="18"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+            <DataGrid ItemsSource="{Binding Adapters}" SelectedItem="{Binding SelectedAdapter}" AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False" SelectionMode="Single" SelectionUnit="FullRow" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
                 <DataGrid.Columns>
-                    <DataGridTextColumn Header="网卡" Binding="{Binding Name}" Width="180" />
-                    <DataGridTextColumn Header="索引" Binding="{Binding InterfaceIndex}" Width="55" />
-                    <DataGridTextColumn Header="状态" Binding="{Binding Status}" Width="75" />
-                    <DataGridTextColumn Header="IPv6 地址" Binding="{Binding IPv6Display}" Width="260" />
-                    <DataGridTextColumn Header="网关" Binding="{Binding GatewayDisplay}" Width="160" />
-                    <DataGridTextColumn Header="DNS" Binding="{Binding DnsDisplay}" Width="180" />
+                    <DataGridTextColumn Header="网卡" Binding="{Binding Name}" Width="160"/><DataGridTextColumn Header="索引" Binding="{Binding InterfaceIndex}" Width="55"/><DataGridTextColumn Header="状态" Binding="{Binding Status}" Width="70"/>
+                    <DataGridTextColumn Header="IPv4 地址" Binding="{Binding IPv4Display}" Width="190"/><DataGridTextColumn Header="IPv6 地址" Binding="{Binding IPv6Display}" Width="250"/><DataGridTextColumn Header="网关" Binding="{Binding GatewayDisplay}" Width="160"/><DataGridTextColumn Header="DNS" Binding="{Binding DnsDisplay}" Width="180"/>
                 </DataGrid.Columns>
             </DataGrid>
-            <Border Grid.Column="2" Background="White" BorderBrush="#DCE3EC" BorderThickness="1" CornerRadius="8" Padding="18">
-                <StackPanel>
-                    <TextBlock Text="所选网卡" FontSize="17" FontWeight="SemiBold" />
-                    <TextBlock Text="{Binding SelectedAdapter.SelectionDisplay}" TextWrapping="Wrap" Foreground="#374151" Margin="0,10,0,0" />
-                    <TextBlock Text="ms_tcpip6 绑定状态" FontWeight="SemiBold" Margin="0,18,0,4" />
-                    <TextBlock Text="{Binding BindingStatus}" Foreground="#1D4ED8" FontSize="16" />
-                    <Button Command="{Binding ReadBindingCommand}" Content="读取绑定状态" Padding="12,6" Margin="0,10,0,0" />
-                    <Button Command="{Binding ResetCommand}" Content="预览命令并重置 IPv6" Padding="16,9" Margin="0,22,0,0"
-                            Background="#DC2626" Foreground="White" BorderThickness="0" />
-                    <TextBlock Text="执行阶段" FontWeight="SemiBold" Margin="0,18,0,4" />
-                    <TextBlock Text="{Binding StatusMessage}" TextWrapping="Wrap" Foreground="#4B5563" />
-                    <TextBlock Text="{Binding ErrorMessage}" TextWrapping="Wrap" Foreground="#B91C1C" Margin="0,10,0,0" />
-                    <TextBlock Text="手工恢复命令" FontWeight="SemiBold" Margin="0,14,0,4" />
-                    <TextBox Text="{Binding ManualRecoveryCommand}" IsReadOnly="True" TextWrapping="Wrap" MinHeight="54"
-                             FontFamily="Consolas" VerticalScrollBarVisibility="Auto" />
-                    <Button Content="复制手工恢复命令" Click="OnCopyRecoveryCommand" Padding="12,6" Margin="0,8,0,0" />
-                </StackPanel>
+            <Border Grid.Column="2" Background="White" BorderBrush="#DCE3EC" BorderThickness="1" CornerRadius="8" Padding="16">
+                <Grid>
+                    <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+                    <StackPanel><TextBlock Text="所选网卡" FontSize="17" FontWeight="SemiBold"/><TextBlock Text="{Binding SelectedAdapter.SelectionDisplay}" TextWrapping="Wrap" Foreground="#374151" Margin="0,8,0,10"/></StackPanel>
+                    <TabControl Grid.Row="1">
+                        <TabItem Header="IPv4"><ScrollViewer VerticalScrollBarVisibility="Auto"><StackPanel Margin="12">
+                            <TextBlock Text="ms_tcpip 绑定状态" FontWeight="SemiBold"/><TextBlock Text="{Binding Ipv4BindingStatus}" Foreground="#1D4ED8" FontSize="16" Margin="0,4,0,0"/>
+                            <Button Command="{Binding ReadIPv4BindingCommand}" Content="读取绑定状态" IsEnabled="{Binding IsIPv4Supported}" Padding="12,6" Margin="0,10,0,0"/>
+                            <Button Command="{Binding ResetIPv4Command}" Content="预览命令并重置 IPv4" IsEnabled="{Binding IsIPv4Supported}" Padding="16,9" Margin="0,16,0,0" Background="#DC2626" Foreground="White" BorderThickness="0"/>
+                            <TextBlock Text="手工恢复命令" FontWeight="SemiBold" Margin="0,14,0,4"/><TextBox Text="{Binding Ipv4ManualRecoveryCommand}" IsReadOnly="True" TextWrapping="Wrap" MinHeight="54" FontFamily="Consolas" VerticalScrollBarVisibility="Auto"/>
+                            <Button x:Name="CopyIPv4RecoveryButton" Content="复制手工恢复命令" Click="OnCopyIPv4RecoveryCommand" IsEnabled="{Binding IsIPv4Supported}" Padding="12,6" Margin="0,8,0,0"/>
+                        </StackPanel></ScrollViewer></TabItem>
+                        <TabItem Header="IPv6"><ScrollViewer VerticalScrollBarVisibility="Auto"><StackPanel Margin="12">
+                            <TextBlock Text="ms_tcpip6 绑定状态" FontWeight="SemiBold"/><TextBlock Text="{Binding BindingStatus}" Foreground="#1D4ED8" FontSize="16" Margin="0,4,0,0"/>
+                            <Button Command="{Binding ReadBindingCommand}" Content="读取绑定状态" IsEnabled="{Binding IsIPv6Supported}" Padding="12,6" Margin="0,10,0,0"/>
+                            <Button Command="{Binding ResetCommand}" Content="预览命令并重置 IPv6" IsEnabled="{Binding IsIPv6Supported}" Padding="16,9" Margin="0,16,0,0" Background="#DC2626" Foreground="White" BorderThickness="0"/>
+                            <TextBlock Text="手工恢复命令" FontWeight="SemiBold" Margin="0,14,0,4"/><TextBox Text="{Binding ManualRecoveryCommand}" IsReadOnly="True" TextWrapping="Wrap" MinHeight="54" FontFamily="Consolas" VerticalScrollBarVisibility="Auto"/>
+                            <Button x:Name="CopyIPv6RecoveryButton" Content="复制手工恢复命令" Click="OnCopyIPv6RecoveryCommand" IsEnabled="{Binding IsIPv6Supported}" Padding="12,6" Margin="0,8,0,0"/>
+                        </StackPanel></ScrollViewer></TabItem>
+                    </TabControl>
+                    <StackPanel Grid.Row="2" Margin="0,10,0,0"><TextBlock Text="{Binding StatusMessage}" TextWrapping="Wrap" Foreground="#4B5563"/><TextBlock Text="{Binding CopyStatusMessage}" TextWrapping="Wrap" Foreground="#15803D" Margin="0,5,0,0"/><TextBlock Text="{Binding ErrorMessage}" TextWrapping="Wrap" Foreground="#B91C1C" Margin="0,5,0,0"/></StackPanel>
+                </Grid>
             </Border>
         </Grid>
-        <Button Grid.Row="3" Content="关闭" IsCancel="True" HorizontalAlignment="Right" Padding="20,8" Margin="0,14,0,0" />
+        <Button Grid.Row="3" Content="关闭" IsCancel="True" HorizontalAlignment="Right" Padding="20,8" Margin="0,14,0,0"/>
     </Grid>
 </Window>

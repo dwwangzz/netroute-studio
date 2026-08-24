@@ -27,9 +27,9 @@
                     <Button Content="备份恢复" Click="OnOpenRouteBackup" HorizontalContentAlignment="Left"
                             Margin="0,5" Padding="8,7" Background="#EFF6FF" Foreground="#1D4ED8" BorderBrush="#BFDBFE"
                             ToolTip="创建、校验和预览 IPv4 路由备份" />
-                    <Button Content="IPv6 重置" Click="OnOpenIPv6Reset" HorizontalContentAlignment="Left"
+                    <Button Content="IP 绑定重置" Click="OnOpenIPv6Reset" HorizontalContentAlignment="Left"
                             Margin="0,5" Padding="8,7" Background="#FEF2F2" Foreground="#B91C1C" BorderBrush="#FECACA"
-                            ToolTip="安全重置单张网卡的 ms_tcpip6 绑定" />
+                            ToolTip="安全重置单张网卡的 IPv4（ms_tcpip）或 IPv6（ms_tcpip6）绑定" />
                     <TextBlock Text="○  网络测试" Foreground="#9CA3AF" Margin="0,7" />
                 </StackPanel>
             </Border>

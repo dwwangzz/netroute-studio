@@ -16,7 +16,7 @@ public sealed class IPv6ResetViewModelTests
         var resetService = new StubResetService(
             [new IPv6BindingInfo("ETH", "ms_tcpip6", true)]);
         var viewModel = new IPv6ResetViewModel(
-            new StubAdapterService([unsupported, supported]), resetService,
+            new StubAdapterService([unsupported, supported]), new StubIPv4ResetService([]), resetService,
             new AlwaysConfirmService(), NullLogger<IPv6ResetViewModel>.Instance);
 
         await viewModel.RefreshAsync();
@@ -55,6 +55,16 @@ public sealed class IPv6ResetViewModelTests
             IProgress<string>? progress = null,
             CancellationToken cancellationToken = default) =>
             Task.FromResult(new IPv6ResetResult(bindings[0], bindings[0], adapter, false));
+    }
+
+    private sealed class StubIPv4ResetService(IReadOnlyList<IPv4BindingInfo> bindings) : IIPv4BindingResetService
+    {
+        public string GetResetCommand(string adapterName) => "RESET";
+        public string GetManualEnableCommand(string adapterName) => $"Enable-NetAdapterBinding -Name '{adapterName}' -ComponentID ms_tcpip";
+        public Task<IReadOnlyList<IPv4BindingInfo>> GetBindingsAsync(CancellationToken cancellationToken = default) => Task.FromResult(bindings);
+        public Task<IPv4BindingInfo> GetBindingAsync(string adapterName, CancellationToken cancellationToken = default) => Task.FromResult(bindings.Single(binding => binding.AdapterName == adapterName));
+        public Task<IPv4BindingResetResult> ResetAsync(NetworkAdapterInfo adapter, IProgress<string>? progress = null, CancellationToken cancellationToken = default) =>
+            Task.FromResult(new IPv4BindingResetResult(bindings[0], bindings[0], adapter, false));
     }
 
     private sealed class AlwaysConfirmService : IConfirmationService
