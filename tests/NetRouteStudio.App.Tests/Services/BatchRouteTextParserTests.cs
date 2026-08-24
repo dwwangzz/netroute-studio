@@ -57,4 +57,59 @@ public sealed class BatchRouteTextParserTests
         item.InterfaceIndex.Should().Be("9");
         item.NextHop.Should().Be("0.0.0.0");
     }
+
+    [Fact]
+    public void 复制路由行_应保留参数并转换为已勾选的新增行()
+    {
+        var adapter = new NetworkAdapterInfo(
+            "Ethernet", "Adapter", 7, "Up", "00-00-00-00-00-00", "1 Gbps",
+            NetworkAdapterKind.Physical, ["192.168.1.10/24"], [], [], ["192.168.1.1"],
+            25, false, 25, false);
+        var originalRoute = new RouteInfo(
+            RouteAddressFamily.IPv4, "10.20.0.0/16", "192.168.1.1", "Ethernet", 7,
+            10, 25, "NetMgmt", true, true);
+        var source = BatchRouteEditItem.FromRoute(originalRoute);
+        source.SelectedAdapter = adapter;
+        source.Operation = BatchRouteOperation.Delete;
+
+        var copy = source.CopyAsCreate();
+
+        copy.OriginalRoute.Should().BeNull();
+        copy.Operation.Should().Be(BatchRouteOperation.Create);
+        copy.IsSelected.Should().BeTrue();
+        copy.DestinationPrefix.Should().Be("10.20.0.0/16");
+        copy.SelectedAdapter.Should().BeSameAs(adapter);
+        copy.InterfaceIndex.Should().Be("7");
+        copy.IsPersistent.Should().BeTrue();
+    }
+
+    [Fact]
+    public void 移除已有路由_应切换为可撤销的删除操作()
+    {
+        var route = new RouteInfo(
+            RouteAddressFamily.IPv4, "10.20.0.0/16", "192.168.1.1", "Ethernet", 7,
+            10, 25, "NetMgmt", false, true);
+        var item = BatchRouteEditItem.FromRoute(route);
+
+        item.ToggleRemoval().Should().BeTrue();
+        item.Operation.Should().Be(BatchRouteOperation.Delete);
+        item.IsSelected.Should().BeTrue();
+        item.IsRouteEditable.Should().BeFalse();
+        item.RowActionDisplay.Should().Be("取消删除");
+
+        item.ToggleRemoval().Should().BeTrue();
+        item.Operation.Should().Be(BatchRouteOperation.Update);
+        item.IsSelected.Should().BeFalse();
+        item.IsRouteEditable.Should().BeTrue();
+        item.RowActionDisplay.Should().Be("移除行");
+    }
+
+    [Fact]
+    public void 移除新增行_应通知界面直接删除该行()
+    {
+        var item = new BatchRouteEditItem { Operation = BatchRouteOperation.Create };
+
+        item.ToggleRemoval().Should().BeFalse();
+        item.Operation.Should().Be(BatchRouteOperation.Create);
+    }
 }

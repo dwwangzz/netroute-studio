@@ -19,7 +19,19 @@
             <Grid>
                 <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
                 <StackPanel>
-                    <TextBlock Text="粘贴新增路由（每行：目标CIDR, 下一跳, 接口索引, 路由Metric, 永久）" FontWeight="SemiBold" />
+                    <Border Background="#EFF6FF" BorderBrush="#93C5FD" BorderThickness="1" CornerRadius="6" Padding="10" Margin="0,0,12,8">
+                        <StackPanel>
+                            <TextBlock Text="如何粘贴新增路由" FontWeight="Bold" Foreground="#1D4ED8" FontSize="14" />
+                            <TextBlock Margin="0,4,0,0" TextWrapping="Wrap" Foreground="#1E3A8A">
+                                <Run Text="每行一条，使用英文逗号或 Tab 分隔：" />
+                                <Run Text="目标CIDR, 下一跳, 接口索引, 路由Metric, 保存方式" FontWeight="SemiBold" />
+                            </TextBlock>
+                            <TextBlock Margin="0,3,0,0" TextWrapping="Wrap" Foreground="#1E3A8A"
+                                       Text="示例：10.20.0.0/16,192.168.1.1,7,10,永久   ｜   无网关下一跳填写 0.0.0.0" />
+                            <TextBlock Margin="0,3,0,0" TextWrapping="Wrap" Foreground="#1E3A8A"
+                                       Text="保存方式支持：永久 / 临时、true / false、1 / 0。粘贴后点击右侧“导入粘贴内容”。" />
+                        </StackPanel>
+                    </Border>
                     <TextBox x:Name="ImportTextBox" Height="64" AcceptsReturn="True" Margin="0,7,12,0"
                              VerticalScrollBarVisibility="Auto" FontFamily="Consolas"
                              ToolTip="保存方式支持 true/false、1/0、永久/临时" />
@@ -34,6 +46,11 @@
         <Border Grid.Row="2" Background="White" BorderBrush="#DCE3EC" BorderThickness="1" CornerRadius="8" Padding="10">
             <DataGrid ItemsSource="{Binding Items}" AutoGenerateColumns="False" CanUserAddRows="False"
                       GridLinesVisibility="Horizontal" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+                <DataGrid.Resources>
+                    <Style x:Key="EditableRouteCellStyle" TargetType="DataGridCell">
+                        <Setter Property="IsEnabled" Value="{Binding IsRouteEditable}" />
+                    </Style>
+                </DataGrid.Resources>
                 <DataGrid.Columns>
                     <DataGridCheckBoxColumn Header="执行" Binding="{Binding IsSelected}" Width="52" />
                     <DataGridTemplateColumn Header="操作" Width="86">
@@ -45,20 +62,38 @@
                             </DataTemplate>
                         </DataGridTemplateColumn.CellTemplate>
                     </DataGridTemplateColumn>
-                    <DataGridTextColumn Header="目标 CIDR" Binding="{Binding DestinationPrefix, UpdateSourceTrigger=PropertyChanged}" Width="180" />
-                    <DataGridTextColumn Header="下一跳" Binding="{Binding NextHop, UpdateSourceTrigger=PropertyChanged}" Width="150" />
+                    <DataGridTextColumn Header="目标 CIDR" Binding="{Binding DestinationPrefix, UpdateSourceTrigger=PropertyChanged}"
+                                        CellStyle="{StaticResource EditableRouteCellStyle}" Width="180" />
+                    <DataGridTextColumn Header="下一跳" Binding="{Binding NextHop, UpdateSourceTrigger=PropertyChanged}"
+                                        CellStyle="{StaticResource EditableRouteCellStyle}" Width="150" />
                     <DataGridTemplateColumn Header="网络接口" Width="260">
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
                                 <ComboBox ItemsSource="{Binding DataContext.Adapters, RelativeSource={RelativeSource AncestorType=Window}}"
                                           SelectedItem="{Binding SelectedAdapter, UpdateSourceTrigger=PropertyChanged}"
-                                          DisplayMemberPath="SelectionDisplay" />
+                                          DisplayMemberPath="SelectionDisplay" IsEnabled="{Binding IsRouteEditable}" />
                             </DataTemplate>
                         </DataGridTemplateColumn.CellTemplate>
                     </DataGridTemplateColumn>
-                    <DataGridTextColumn Header="接口索引" Binding="{Binding InterfaceIndex}" IsReadOnly="True" Width="76" />
-                    <DataGridTextColumn Header="路由 Metric" Binding="{Binding RouteMetric, UpdateSourceTrigger=PropertyChanged}" Width="90" />
-                    <DataGridCheckBoxColumn Header="永久" Binding="{Binding IsPersistent}" Width="62" />
+                    <DataGridTextColumn Header="接口索引" Binding="{Binding InterfaceIndex}" IsReadOnly="True"
+                                        CellStyle="{StaticResource EditableRouteCellStyle}" Width="76" />
+                    <DataGridTextColumn Header="路由 Metric" Binding="{Binding RouteMetric, UpdateSourceTrigger=PropertyChanged}"
+                                        CellStyle="{StaticResource EditableRouteCellStyle}" Width="90" />
+                    <DataGridCheckBoxColumn Header="永久" Binding="{Binding IsPersistent}"
+                                            CellStyle="{StaticResource EditableRouteCellStyle}" Width="62" />
+                    <DataGridTemplateColumn Header="行操作" Width="150" IsReadOnly="True">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <StackPanel Orientation="Horizontal">
+                                    <Button Content="复制行" Click="OnCopyRow" CommandParameter="{Binding}"
+                                            Padding="9,3" Margin="0,0,6,0" ToolTip="复制为一条新的新增记录" />
+                                    <Button Content="{Binding RowActionDisplay}" Click="OnRemoveRow" CommandParameter="{Binding}"
+                                            Padding="9,3" Foreground="#B91C1C"
+                                            ToolTip="新增行将直接移除；已有路由将标记为可撤销的删除操作" />
+                                </StackPanel>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
                 </DataGrid.Columns>
             </DataGrid>
         </Border>

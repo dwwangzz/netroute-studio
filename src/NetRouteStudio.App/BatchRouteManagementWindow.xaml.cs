@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.Windows;
+using System.Windows.Controls;
 using NetRouteStudio.App.Models;
 using NetRouteStudio.App.Services;
 
@@ -71,6 +72,32 @@ public partial class BatchRouteManagementWindow : Window
         {
             ErrorText.Text = exception.Message;
         }
+    }
+
+    private void OnCopyRow(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button { CommandParameter: BatchRouteEditItem source })
+        {
+            return;
+        }
+
+        var sourceIndex = Items.IndexOf(source);
+        Items.Insert(sourceIndex < 0 ? 0 : sourceIndex + 1, source.CopyAsCreate());
+        ErrorText.Text = string.Empty;
+    }
+
+    private void OnRemoveRow(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button { CommandParameter: BatchRouteEditItem item })
+        {
+            return;
+        }
+
+        if (!item.ToggleRemoval())
+        {
+            Items.Remove(item);
+        }
+        ErrorText.Text = string.Empty;
     }
 
     private void OnContinue(object sender, RoutedEventArgs e)

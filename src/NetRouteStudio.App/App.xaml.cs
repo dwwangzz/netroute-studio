@@ -18,6 +18,7 @@ public partial class App : Application
     {
         base.OnStartup(e);
 
+        HorizontalMouseWheelBehavior.Register();
         RegisterGlobalExceptionHandlers();
 
         try

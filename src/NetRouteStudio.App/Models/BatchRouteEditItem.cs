@@ -23,6 +23,12 @@ public sealed partial class BatchRouteEditItem : ObservableObject
         _ => "删除"
     };
 
+    public bool IsRouteEditable => Operation != BatchRouteOperation.Delete;
+
+    public string RowActionDisplay => OriginalRoute is not null && Operation == BatchRouteOperation.Delete
+        ? "取消删除"
+        : "移除行";
+
     public IPv4RouteRequest BuildRequest()
     {
         if (!int.TryParse(InterfaceIndex, out var interfaceIndex) ||
@@ -45,6 +51,49 @@ public sealed partial class BatchRouteEditItem : ObservableObject
         RouteMetric = route.RouteMetric.ToString(),
         IsPersistent = route.IsPersistent
     };
+
+    public BatchRouteEditItem CopyAsCreate()
+    {
+        var copy = new BatchRouteEditItem
+        {
+            IsSelected = true,
+            Operation = BatchRouteOperation.Create,
+            DestinationPrefix = DestinationPrefix,
+            NextHop = NextHop,
+            InterfaceIndex = InterfaceIndex,
+            RouteMetric = RouteMetric,
+            IsPersistent = IsPersistent
+        };
+        copy.SelectedAdapter = SelectedAdapter;
+        return copy;
+    }
+
+    public bool ToggleRemoval()
+    {
+        if (OriginalRoute is null)
+        {
+            return false;
+        }
+
+        if (Operation == BatchRouteOperation.Delete)
+        {
+            Operation = BatchRouteOperation.Update;
+            IsSelected = false;
+        }
+        else
+        {
+            Operation = BatchRouteOperation.Delete;
+            IsSelected = true;
+        }
+        return true;
+    }
+
+    partial void OnOperationChanged(BatchRouteOperation value)
+    {
+        OnPropertyChanged(nameof(OperationDisplay));
+        OnPropertyChanged(nameof(IsRouteEditable));
+        OnPropertyChanged(nameof(RowActionDisplay));
+    }
 
     partial void OnSelectedAdapterChanged(NetworkAdapterInfo? value)
     {
