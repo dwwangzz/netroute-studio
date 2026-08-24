@@ -24,7 +24,9 @@
                     <Button Content="网卡跃点管理" Click="OnOpenIPv4InterfaceMetric" HorizontalContentAlignment="Left"
                             Margin="0,5" Padding="8,7" Background="#ECFDF5" Foreground="#047857" BorderBrush="#A7F3D0"
                             ToolTip="查看并设置 IPv4、IPv6 接口自动或手动 Metric" />
-                    <TextBlock Text="○  备份恢复" Foreground="#9CA3AF" Margin="0,7" />
+                    <Button Content="备份恢复" Click="OnOpenRouteBackup" HorizontalContentAlignment="Left"
+                            Margin="0,5" Padding="8,7" Background="#EFF6FF" Foreground="#1D4ED8" BorderBrush="#BFDBFE"
+                            ToolTip="创建、校验和预览 IPv4 路由备份" />
                     <TextBlock Text="○  网络测试" Foreground="#9CA3AF" Margin="0,7" />
                 </StackPanel>
             </Border>
