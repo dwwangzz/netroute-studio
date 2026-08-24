@@ -28,4 +28,19 @@ public sealed class ControlledCommandServiceTests
     [InlineData("ipconfig /flushdns")]
     public void 非白名单或危险参数_应拒绝(string input) =>
         _service.Invoking(service => service.Parse(input)).Should().Throw<ArgumentException>();
+
+    [Fact]
+    public async Task 执行Ping_应按行推送且不产生乱码替换字符()
+    {
+        var lines = new List<string>();
+        var result = await _service.ExecuteAsync("ping -n 2 127.0.0.1", new InlineProgress(lines.Add));
+        result.ExitCode.Should().Be(0);
+        result.StandardOutput.Should().NotContain("�");
+        lines.Should().HaveCountGreaterThan(2);
+    }
+
+    private sealed class InlineProgress(Action<string> report) : IProgress<string>
+    {
+        public void Report(string value) => report(value);
+    }
 }

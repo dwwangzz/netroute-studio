@@ -17,7 +17,7 @@ public sealed partial class ControlledCommandViewModel(IControlledCommandService
     {
         if (IsRunning) return;
         IsRunning = true; ErrorMessage = string.Empty; Output = string.Empty; StatusMessage = "正在执行…"; _cancellation = new();
-        try { var result = await service.ExecuteAsync(CommandText, _cancellation.Token); History.Insert(0, result); Output = result.Output; StatusMessage = $"执行完成：{result.StatusDisplay}，耗时 {result.Duration.TotalSeconds:F1} 秒。"; }
+        try { var result = await service.ExecuteAsync(CommandText, new Progress<string>(line => Output += line + Environment.NewLine), _cancellation.Token); History.Insert(0, result); Output = result.Output; StatusMessage = $"执行完成：{result.StatusDisplay}，耗时 {result.Duration.TotalSeconds:F1} 秒。"; }
         catch (Exception exception) { ErrorMessage = exception.Message; StatusMessage = "命令未执行或执行失败。"; }
         finally { _cancellation?.Dispose(); _cancellation = null; IsRunning = false; }
     }
