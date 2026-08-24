@@ -73,13 +73,17 @@ public partial class App : Application
                 services.AddSingleton<IRouteTableService, RouteTableService>();
                 services.AddSingleton<IRouteMatchService, RouteMatchService>();
                 services.AddSingleton<IIPv4RouteManagementService, IPv4RouteManagementService>();
+                services.AddSingleton<IIPv4InterfaceMetricService, IPv4InterfaceMetricService>();
                 services.AddSingleton<IConfirmationService, RouteConfirmationService>();
                 services.AddSingleton<IBatchRouteDialogService, BatchRouteDialogService>();
+                services.AddSingleton<IIPv4InterfaceMetricDialogService, IPv4InterfaceMetricDialogService>();
                 services.AddSingleton<GlobalExceptionHandler>();
                 services.AddSingleton<MainWindowViewModel>();
                 services.AddSingleton<RouteTableViewModel>();
                 services.AddSingleton<RouteMatchViewModel>();
                 services.AddSingleton<RouteManagementViewModel>();
+                services.AddTransient<IPv4InterfaceMetricViewModel>();
+                services.AddTransient<IPv4InterfaceMetricWindow>();
                 services.AddSingleton<MainWindow>();
             })
             .Build();

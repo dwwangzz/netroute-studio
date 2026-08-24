@@ -12,7 +12,7 @@
 
         <StackPanel Margin="0,0,0,14">
             <TextBlock Text="{Binding OperationName}" FontSize="22" FontWeight="SemiBold" Foreground="#111827" />
-            <TextBlock Text="请核对全部字段和即将执行的命令。确认后将立即修改 Windows 路由表。"
+            <TextBlock Text="请核对全部字段和即将执行的命令。确认后将立即修改 Windows 网络配置。"
                        Margin="0,6,0,0" Foreground="#6B7280" />
         </StackPanel>
 
