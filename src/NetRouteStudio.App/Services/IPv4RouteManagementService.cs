@@ -88,25 +88,22 @@ public sealed class IPv4RouteManagementService(
 
     private static string BuildCreateCommand(IPv4RouteRequest request)
     {
-        var store = GetPolicyStore(request.IsPersistent);
         return $$"""
-            New-NetRoute -DestinationPrefix '{{request.DestinationPrefix}}' -InterfaceIndex {{request.InterfaceIndex}} -NextHop '{{request.NextHop}}' -RouteMetric {{request.RouteMetric}} -PolicyStore {{store}} -ErrorAction Stop | Out-Null
+            {{BuildAddStatement(request)}}
             [pscustomobject]@{ Succeeded = $true }
             """;
     }
 
     private static string BuildUpdateCommand(RouteInfo existing, IPv4RouteRequest request)
     {
-        var oldStore = GetPolicyStore(existing.IsPersistent);
-        var newStore = GetPolicyStore(request.IsPersistent);
         return $$"""
-            Remove-NetRoute -DestinationPrefix '{{existing.DestinationPrefix}}' -InterfaceIndex {{existing.InterfaceIndex}} -NextHop '{{existing.NextHop}}' -PolicyStore {{oldStore}} -Confirm:$false -ErrorAction Stop | Out-Null
+            {{BuildRemoveStatement(existing)}}
             try {
-                New-NetRoute -DestinationPrefix '{{request.DestinationPrefix}}' -InterfaceIndex {{request.InterfaceIndex}} -NextHop '{{request.NextHop}}' -RouteMetric {{request.RouteMetric}} -PolicyStore {{newStore}} -ErrorAction Stop | Out-Null
+                {{BuildAddStatement(request)}}
             }
             catch {
                 # 恢复原路由
-                New-NetRoute -DestinationPrefix '{{existing.DestinationPrefix}}' -InterfaceIndex {{existing.InterfaceIndex}} -NextHop '{{existing.NextHop}}' -RouteMetric {{existing.RouteMetric}} -PolicyStore {{oldStore}} -ErrorAction SilentlyContinue | Out-Null
+                {{BuildRestoreStatement(existing)}}
                 throw
             }
             [pscustomobject]@{ Succeeded = $true }
@@ -115,14 +112,32 @@ public sealed class IPv4RouteManagementService(
 
     private static string BuildDeleteCommand(RouteInfo route)
     {
-        var store = GetPolicyStore(route.IsPersistent);
         return $$"""
-            Remove-NetRoute -DestinationPrefix '{{route.DestinationPrefix}}' -InterfaceIndex {{route.InterfaceIndex}} -NextHop '{{route.NextHop}}' -PolicyStore {{store}} -Confirm:$false -ErrorAction Stop | Out-Null
+            {{BuildRemoveStatement(route)}}
             [pscustomobject]@{ Succeeded = $true }
             """;
     }
 
-    private static string GetPolicyStore(bool persistent) => persistent ? "PersistentStore" : "ActiveStore";
+    private static string BuildAddStatement(IPv4RouteRequest request) => request.IsPersistent
+        ? $$"""
+          & netsh.exe interface ipv4 add route "prefix={{request.DestinationPrefix}}" "interface={{request.InterfaceIndex}}" {{BuildNetshNextHopArgument(request.NextHop)}} "metric={{request.RouteMetric}}" store=persistent | Out-Null
+          if ($LASTEXITCODE -ne 0) { throw "netsh 新增永久 IPv4 路由失败（退出码 $LASTEXITCODE）。" }
+          """
+        : $"New-NetRoute -DestinationPrefix '{request.DestinationPrefix}' -InterfaceIndex {request.InterfaceIndex} -NextHop '{request.NextHop}' -RouteMetric {request.RouteMetric} -PolicyStore ActiveStore -ErrorAction Stop | Out-Null";
+
+    private static string BuildRemoveStatement(RouteInfo route) => route.IsPersistent
+        ? $$"""
+          & netsh.exe interface ipv4 delete route "prefix={{route.DestinationPrefix}}" "interface={{route.InterfaceIndex}}" {{BuildNetshNextHopArgument(route.NextHop)}} store=persistent | Out-Null
+          if ($LASTEXITCODE -ne 0) { throw "netsh 删除永久 IPv4 路由失败（退出码 $LASTEXITCODE）。" }
+          """
+        : $"Remove-NetRoute -DestinationPrefix '{route.DestinationPrefix}' -InterfaceIndex {route.InterfaceIndex} -NextHop '{route.NextHop}' -PolicyStore ActiveStore -Confirm:$false -ErrorAction Stop | Out-Null";
+
+    private static string BuildRestoreStatement(RouteInfo route) => route.IsPersistent
+        ? $"& netsh.exe interface ipv4 add route \"prefix={route.DestinationPrefix}\" \"interface={route.InterfaceIndex}\" {BuildNetshNextHopArgument(route.NextHop)} \"metric={route.RouteMetric}\" store=persistent | Out-Null"
+        : $"New-NetRoute -DestinationPrefix '{route.DestinationPrefix}' -InterfaceIndex {route.InterfaceIndex} -NextHop '{route.NextHop}' -RouteMetric {route.RouteMetric} -PolicyStore ActiveStore -ErrorAction SilentlyContinue | Out-Null";
+
+    private static string BuildNetshNextHopArgument(string nextHop) =>
+        nextHop == "0.0.0.0" ? string.Empty : $"\"nexthop={nextHop}\"";
 
     private async Task EnsureInterfaceExistsAsync(int interfaceIndex, CancellationToken cancellationToken)
     {

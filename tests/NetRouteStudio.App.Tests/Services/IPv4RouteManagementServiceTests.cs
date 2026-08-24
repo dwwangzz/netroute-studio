@@ -40,6 +40,84 @@ public sealed class IPv4RouteManagementServiceTests
         executor.Command.Should().Contain("-ErrorAction Stop | Out-Null");
         executor.Command.Should().Contain("catch");
         executor.Command.Should().Contain("恢复原路由");
+        executor.Command.Should().Contain("netsh.exe interface ipv4 add route");
+        executor.Command.Should().Contain("store=persistent");
+        executor.Command.Should().NotContain("-PolicyStore PersistentStore");
+    }
+
+    [Fact]
+    public async Task 新增永久路由_应使用Netsh永久存储并检查退出码()
+    {
+        var created = Route("10.112.22.0/24", "10.112.45.254", 7, 2, true);
+        var executor = new RecordingPowerShellExecutor();
+        var service = new IPv4RouteManagementService(
+            executor,
+            new StubRouteTableService([created]),
+            new StubNetworkAdapterService([Adapter(7)]));
+
+        await service.CreateAsync(new("10.112.22.0/24", "10.112.45.254", 7, 2, true));
+
+        executor.Command.Should().Contain("netsh.exe interface ipv4 add route");
+        executor.Command.Should().Contain("\"prefix=10.112.22.0/24\"");
+        executor.Command.Should().Contain("\"interface=7\"");
+        executor.Command.Should().Contain("\"nexthop=10.112.45.254\"");
+        executor.Command.Should().Contain("\"metric=2\"");
+        executor.Command.Should().Contain("store=persistent");
+        executor.Command.Should().Contain("$LASTEXITCODE -ne 0");
+        executor.Command.Should().NotContain("New-NetRoute");
+        executor.Command.Should().NotContain("PersistentStore");
+    }
+
+    [Fact]
+    public async Task 新增永久OnLink路由_应省略Netsh下一跳参数()
+    {
+        var created = Route("198.51.100.0/24", "0.0.0.0", 7, 10, true);
+        var executor = new RecordingPowerShellExecutor();
+        var service = new IPv4RouteManagementService(
+            executor,
+            new StubRouteTableService([created]),
+            new StubNetworkAdapterService([Adapter(7)]));
+
+        await service.CreateAsync(new("198.51.100.0/24", "", 7, 10, true));
+
+        executor.Command.Should().NotContain("nexthop=");
+    }
+
+    [Fact]
+    public async Task 删除永久路由_应使用Netsh永久存储()
+    {
+        var existing = Route("10.112.22.0/24", "10.112.45.254", 7, 2, true);
+        var executor = new RecordingPowerShellExecutor();
+        var service = new IPv4RouteManagementService(
+            executor,
+            new StubRouteTableService([]),
+            new StubNetworkAdapterService([Adapter(7)]));
+
+        await service.DeleteAsync(existing);
+
+        executor.Command.Should().Contain("netsh.exe interface ipv4 delete route");
+        executor.Command.Should().Contain("store=persistent");
+        executor.Command.Should().Contain("$LASTEXITCODE -ne 0");
+        executor.Command.Should().NotContain("Remove-NetRoute");
+    }
+
+    [Fact]
+    public async Task 永久路由改为临时_失败回滚应使用Netsh恢复原路由()
+    {
+        var existing = Route("10.112.22.0/24", "10.112.45.254", 7, 2, true);
+        var changed = Route("10.112.22.0/24", "10.112.45.254", 7, 3, false);
+        var executor = new RecordingPowerShellExecutor();
+        var service = new IPv4RouteManagementService(
+            executor,
+            new StubRouteTableService([changed]),
+            new StubNetworkAdapterService([Adapter(7)]));
+
+        await service.UpdateAsync(existing, new("10.112.22.0/24", "10.112.45.254", 7, 3, false));
+
+        executor.Command.Should().Contain("netsh.exe interface ipv4 delete route");
+        executor.Command.Should().Contain("New-NetRoute");
+        executor.Command.Should().Contain("恢复原路由");
+        executor.Command.Should().Contain("netsh.exe interface ipv4 add route");
     }
 
     [Fact]
