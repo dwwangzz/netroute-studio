@@ -10,6 +10,21 @@ public sealed class IPv4RouteManagementService(
 {
     private static readonly TimeSpan MutationTimeout = TimeSpan.FromSeconds(20);
 
+    public string GetCreateCommand(IPv4RouteRequest request) =>
+        BuildCreateCommand(IPv4RouteValidator.ValidateAndNormalize(request));
+
+    public string GetUpdateCommand(RouteInfo existingRoute, IPv4RouteRequest request)
+    {
+        ValidateOperableRoute(existingRoute);
+        return BuildUpdateCommand(existingRoute, IPv4RouteValidator.ValidateAndNormalize(request));
+    }
+
+    public string GetDeleteCommand(RouteInfo route)
+    {
+        ValidateOperableRoute(route);
+        return BuildDeleteCommand(route);
+    }
+
     public async Task<RouteMutationResult> CreateAsync(
         IPv4RouteRequest request,
         CancellationToken cancellationToken = default)

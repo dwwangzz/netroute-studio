@@ -1,0 +1,75 @@
+<Window x:Class="NetRouteStudio.App.BatchRouteManagementWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="批量 IPv4 路由管理" Width="1080" Height="720" MinWidth="880" MinHeight="580"
+        WindowStartupLocation="CenterOwner" Background="#F3F6FA">
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+        <StackPanel>
+            <TextBlock Text="批量 IPv4 路由管理" FontSize="24" FontWeight="SemiBold" />
+            <TextBlock Text="勾选现有路由进行修改或删除；也可以新增空白行或粘贴多行新增。" Foreground="#6B7280" Margin="0,5,0,0" />
+        </StackPanel>
+
+        <Border Grid.Row="1" Background="White" BorderBrush="#DCE3EC" BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,14,0,14">
+            <Grid>
+                <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                <StackPanel>
+                    <TextBlock Text="粘贴新增路由（每行：目标CIDR, 下一跳, 接口索引, 路由Metric, 永久）" FontWeight="SemiBold" />
+                    <TextBox x:Name="ImportTextBox" Height="64" AcceptsReturn="True" Margin="0,7,12,0"
+                             VerticalScrollBarVisibility="Auto" FontFamily="Consolas"
+                             ToolTip="保存方式支持 true/false、1/0、永久/临时" />
+                </StackPanel>
+                <StackPanel Grid.Column="1" VerticalAlignment="Bottom">
+                    <Button Content="导入粘贴内容" Click="OnImport" Padding="14,7" Margin="0,0,0,7" />
+                    <Button Content="添加空白新增行" Click="OnAddBlank" Padding="14,7" />
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <Border Grid.Row="2" Background="White" BorderBrush="#DCE3EC" BorderThickness="1" CornerRadius="8" Padding="10">
+            <DataGrid ItemsSource="{Binding Items}" AutoGenerateColumns="False" CanUserAddRows="False"
+                      GridLinesVisibility="Horizontal" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+                <DataGrid.Columns>
+                    <DataGridCheckBoxColumn Header="执行" Binding="{Binding IsSelected}" Width="52" />
+                    <DataGridTemplateColumn Header="操作" Width="86">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <ComboBox ItemsSource="{Binding DataContext.OperationOptions, RelativeSource={RelativeSource AncestorType=Window}}"
+                                          DisplayMemberPath="Name" SelectedValuePath="Value"
+                                          SelectedValue="{Binding Operation, UpdateSourceTrigger=PropertyChanged}" />
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+                    <DataGridTextColumn Header="目标 CIDR" Binding="{Binding DestinationPrefix, UpdateSourceTrigger=PropertyChanged}" Width="180" />
+                    <DataGridTextColumn Header="下一跳" Binding="{Binding NextHop, UpdateSourceTrigger=PropertyChanged}" Width="150" />
+                    <DataGridTemplateColumn Header="网络接口" Width="260">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <ComboBox ItemsSource="{Binding DataContext.Adapters, RelativeSource={RelativeSource AncestorType=Window}}"
+                                          SelectedItem="{Binding SelectedAdapter, UpdateSourceTrigger=PropertyChanged}"
+                                          DisplayMemberPath="SelectionDisplay" />
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+                    <DataGridTextColumn Header="接口索引" Binding="{Binding InterfaceIndex}" IsReadOnly="True" Width="76" />
+                    <DataGridTextColumn Header="路由 Metric" Binding="{Binding RouteMetric, UpdateSourceTrigger=PropertyChanged}" Width="90" />
+                    <DataGridCheckBoxColumn Header="永久" Binding="{Binding IsPersistent}" Width="62" />
+                </DataGrid.Columns>
+            </DataGrid>
+        </Border>
+
+        <Grid Grid.Row="3" Margin="0,14,0,0">
+            <TextBlock x:Name="ErrorText" Foreground="#B91C1C" VerticalAlignment="Center" TextWrapping="Wrap" />
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                <Button Content="取消" IsCancel="True" Padding="18,8" Margin="0,0,10,0" />
+                <Button Content="生成命令并继续" Click="OnContinue" Padding="18,8"
+                        Background="#2563EB" Foreground="White" BorderThickness="0" />
+            </StackPanel>
+        </Grid>
+    </Grid>
+</Window>

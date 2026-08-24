@@ -1,6 +1,8 @@
+using NetRouteStudio.App.Models;
+
 namespace NetRouteStudio.App.Services;
 
 public interface IConfirmationService
 {
-    bool Confirm(string title, string message);
+    bool Confirm(RouteConfirmationRequest request);
 }

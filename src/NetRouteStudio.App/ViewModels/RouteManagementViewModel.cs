@@ -12,6 +12,7 @@ public sealed partial class RouteManagementViewModel(
     INetworkAdapterService networkAdapterService,
     IIPv4RouteManagementService managementService,
     IConfirmationService confirmationService,
+    IBatchRouteDialogService batchDialogService,
     ILogger<RouteManagementViewModel> logger) : ObservableObject
 {
     private readonly List<RouteInfo> _allRoutes = [];
@@ -86,9 +87,31 @@ public sealed partial class RouteManagementViewModel(
     [RelayCommand]
     private async Task CreateAsync()
     {
+        IPv4RouteRequest request;
+        try
+        {
+            request = BuildRequest();
+        }
+        catch (Exception exception)
+        {
+            ErrorMessage = exception.Message;
+            return;
+        }
+
+        if (!confirmationService.Confirm(BuildConfirmation(
+                "确认新增 IPv4 路由",
+                "新增 IPv4 路由",
+                null,
+                request,
+                managementService.GetCreateCommand(request))))
+        {
+            return;
+        }
+
         await ExecuteAsync(
-            request => managementService.CreateAsync(request),
-            result => ApplyVerifiedRoute(null, result.VerifiedRoute));
+            normalizedRequest => managementService.CreateAsync(normalizedRequest),
+            result => ApplyVerifiedRoute(null, result.VerifiedRoute),
+            request);
     }
 
     [RelayCommand]
@@ -112,10 +135,12 @@ public sealed partial class RouteManagementViewModel(
         }
 
         var existingRoute = SelectedRoute;
-        var message = $"确认修改路由？\n\n原目标：{SelectedRoute.DestinationPrefix}\n新目标：{request.DestinationPrefix}\n" +
-                      $"下一跳：{request.NextHop}\n接口索引：{request.InterfaceIndex}\n" +
-                      $"生效范围：{(request.IsPersistent ? "永久" : "临时")}";
-        if (!confirmationService.Confirm("确认修改 IPv4 路由", message))
+        if (!confirmationService.Confirm(BuildConfirmation(
+                "确认修改 IPv4 路由",
+                "修改 IPv4 路由",
+                existingRoute,
+                request,
+                managementService.GetUpdateCommand(existingRoute, request))))
         {
             return;
         }
@@ -135,10 +160,13 @@ public sealed partial class RouteManagementViewModel(
             return;
         }
 
-        var message = $"确认删除路由？\n\n目标：{SelectedRoute.DestinationPrefix}\n" +
-                      $"下一跳：{SelectedRoute.NextHop}\n接口：{SelectedRoute.InterfaceAlias}（{SelectedRoute.InterfaceIndex}）\n" +
-                      $"生效范围：{SelectedRoute.LifetimeDisplay}";
-        if (!confirmationService.Confirm("确认删除 IPv4 路由", message))
+        var routeToDelete = SelectedRoute;
+        if (!confirmationService.Confirm(BuildConfirmation(
+                "确认删除 IPv4 路由",
+                "删除 IPv4 路由",
+                routeToDelete,
+                null,
+                managementService.GetDeleteCommand(routeToDelete))))
         {
             return;
         }
@@ -147,7 +175,6 @@ public sealed partial class RouteManagementViewModel(
         ErrorMessage = string.Empty;
         try
         {
-            var routeToDelete = SelectedRoute;
             var result = await managementService.DeleteAsync(routeToDelete);
             _allRoutes.Remove(routeToDelete);
             ApplySearch();
@@ -163,6 +190,56 @@ public sealed partial class RouteManagementViewModel(
         finally
         {
             IsLoading = false;
+        }
+    }
+
+    [RelayCommand]
+    private async Task BatchManageAsync()
+    {
+        var items = batchDialogService.Edit(_allRoutes, Adapters);
+        if (items is null || items.Count == 0)
+        {
+            return;
+        }
+
+        RouteConfirmationRequest confirmation;
+        try
+        {
+            confirmation = BuildBatchConfirmation(items);
+        }
+        catch (Exception exception)
+        {
+            ErrorMessage = exception.Message;
+            return;
+        }
+
+        if (!confirmationService.Confirm(confirmation))
+        {
+            return;
+        }
+
+        IsLoading = true;
+        ErrorMessage = string.Empty;
+        var results = new List<BatchRouteExecutionResult>();
+        try
+        {
+            foreach (var item in items)
+            {
+                await ExecuteBatchItemAsync(item, results);
+            }
+
+            ApplySearch();
+            var succeeded = results.Count(result => result.Succeeded);
+            StatusMessage = $"批量路由操作完成：成功 {succeeded} 条，失败 {results.Count - succeeded} 条。";
+            if (succeeded != results.Count)
+            {
+                ErrorMessage = "部分路由操作失败，请在结果窗口中查看每条记录。";
+            }
+        }
+        finally
+        {
+            IsLoading = false;
+            batchDialogService.ShowResults(results);
         }
     }
 
@@ -249,6 +326,117 @@ public sealed partial class RouteManagementViewModel(
             parsedMetric,
             IsPersistent));
     }
+
+    private RouteConfirmationRequest BuildConfirmation(
+        string title,
+        string operationName,
+        RouteInfo? before,
+        IPv4RouteRequest? after,
+        string command)
+    {
+        var afterAdapter = after is null
+            ? null
+            : Adapters.FirstOrDefault(adapter => adapter.InterfaceIndex == after.InterfaceIndex);
+        var afterInterfaceMetric = afterAdapter?.IPv4InterfaceMetric ?? 0;
+        const string empty = "—";
+
+        string Before(Func<RouteInfo, string> selector) => before is null ? empty : selector(before);
+        string After(Func<string> selector) => after is null ? empty : selector();
+
+        RouteConfirmationField[] fields =
+        [
+            new("地址族", Before(route => route.AddressFamilyDisplay), After(() => "IPv4")),
+            new("目标网络", Before(route => route.DestinationPrefix), After(() => after!.DestinationPrefix)),
+            new("下一跳", Before(route => DisplayNextHop(route.NextHop)), After(() => DisplayNextHop(after!.NextHop))),
+            new("网卡接口", Before(route => route.InterfaceAlias), After(() => afterAdapter?.Name ?? $"接口 {after!.InterfaceIndex}")),
+            new("接口索引", Before(route => route.InterfaceIndex.ToString()), After(() => after!.InterfaceIndex.ToString())),
+            new("路由 Metric", Before(route => route.RouteMetric.ToString()), After(() => after!.RouteMetric.ToString())),
+            new("接口 Metric", Before(route => route.InterfaceMetric.ToString()), After(() => afterInterfaceMetric.ToString())),
+            new("有效 Metric", Before(route => route.EffectiveMetric.ToString()), After(() => (after!.RouteMetric + afterInterfaceMetric).ToString())),
+            new("保存方式", Before(route => route.LifetimeDisplay), After(() => after!.IsPersistent ? "永久" : "临时")),
+            new("活动状态", Before(route => route.IsActive ? "已生效" : "未生效"), After(() => "执行后由系统确认")),
+            new("协议/来源", Before(route => route.Protocol), After(() => "NetMgmt")),
+            new("管理属性", Before(route => route.OperabilityDisplay), After(() => "用户可操作"))
+        ];
+
+        return new RouteConfirmationRequest(title, operationName, fields, command.Trim());
+    }
+
+    private RouteConfirmationRequest BuildBatchConfirmation(IReadOnlyList<BatchRouteEditItem> items)
+    {
+        var fields = new List<RouteConfirmationField>();
+        var commands = new List<string>();
+        for (var index = 0; index < items.Count; index++)
+        {
+            var item = items[index];
+            var request = item.Operation == BatchRouteOperation.Delete ? null : item.BuildRequest();
+            var command = item.Operation switch
+            {
+                BatchRouteOperation.Create => managementService.GetCreateCommand(request!),
+                BatchRouteOperation.Update => managementService.GetUpdateCommand(item.OriginalRoute!, request!),
+                _ => managementService.GetDeleteCommand(item.OriginalRoute!)
+            };
+            var single = BuildConfirmation(string.Empty, string.Empty, item.OriginalRoute, request, command);
+            var prefix = $"[{index + 1} {item.OperationDisplay}] ";
+            fields.AddRange(single.Fields.Select(field => field with { Name = prefix + field.Name }));
+            commands.Add($"# {prefix}{item.DestinationPrefix}\n{command.Trim()}");
+        }
+
+        return new RouteConfirmationRequest(
+            "确认批量 IPv4 路由操作",
+            $"批量 IPv4 路由操作（共 {items.Count} 条）",
+            fields,
+            string.Join("\n\n", commands));
+    }
+
+    private async Task ExecuteBatchItemAsync(
+        BatchRouteEditItem item,
+        ICollection<BatchRouteExecutionResult> results)
+    {
+        try
+        {
+            RouteMutationResult result;
+            switch (item.Operation)
+            {
+                case BatchRouteOperation.Create:
+                    result = await managementService.CreateAsync(item.BuildRequest());
+                    AddOrReplaceLocalRoute(result.VerifiedRoute);
+                    break;
+                case BatchRouteOperation.Update:
+                    result = await managementService.UpdateAsync(item.OriginalRoute!, item.BuildRequest());
+                    _allRoutes.Remove(item.OriginalRoute!);
+                    AddOrReplaceLocalRoute(result.VerifiedRoute);
+                    break;
+                default:
+                    result = await managementService.DeleteAsync(item.OriginalRoute!);
+                    _allRoutes.Remove(item.OriginalRoute!);
+                    break;
+            }
+
+            results.Add(new BatchRouteExecutionResult(
+                item.Operation, item.DestinationPrefix, true, result.Message));
+        }
+        catch (Exception exception)
+        {
+            logger.LogError(exception, "批量路由操作失败：{Operation} {DestinationPrefix}", item.Operation, item.DestinationPrefix);
+            results.Add(new BatchRouteExecutionResult(
+                item.Operation, item.DestinationPrefix, false, exception.Message));
+        }
+    }
+
+    private void AddOrReplaceLocalRoute(RouteInfo? route)
+    {
+        if (route is null)
+        {
+            return;
+        }
+
+        _allRoutes.RemoveAll(existing => IsSameIdentity(existing, route));
+        _allRoutes.Add(route);
+    }
+
+    private static string DisplayNextHop(string nextHop) =>
+        nextHop == "0.0.0.0" ? "在链路上（0.0.0.0）" : nextHop;
 
     private void ApplyVerifiedRoute(RouteInfo? previousRoute, RouteInfo? verifiedRoute)
     {

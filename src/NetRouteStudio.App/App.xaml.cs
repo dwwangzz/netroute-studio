@@ -72,7 +72,8 @@ public partial class App : Application
                 services.AddSingleton<IRouteTableService, RouteTableService>();
                 services.AddSingleton<IRouteMatchService, RouteMatchService>();
                 services.AddSingleton<IIPv4RouteManagementService, IPv4RouteManagementService>();
-                services.AddSingleton<IConfirmationService, MessageBoxConfirmationService>();
+                services.AddSingleton<IConfirmationService, RouteConfirmationService>();
+                services.AddSingleton<IBatchRouteDialogService, BatchRouteDialogService>();
                 services.AddSingleton<GlobalExceptionHandler>();
                 services.AddSingleton<MainWindowViewModel>();
                 services.AddSingleton<RouteTableViewModel>();

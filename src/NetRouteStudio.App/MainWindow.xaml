@@ -90,6 +90,8 @@
                                         <Button Command="{Binding UpdateCommand}" Content="修改" Padding="16,7" Margin="0,0,8,8" />
                                         <Button Command="{Binding DeleteCommand}" Content="删除" Padding="16,7" Margin="0,0,8,8" Foreground="#B91C1C" />
                                         <Button Command="{Binding ClearFormCommand}" Content="清空" Padding="16,7" Margin="0,0,0,8" />
+                                        <Button Command="{Binding BatchManageCommand}" Content="批量管理" Padding="16,7" Margin="8,0,0,8"
+                                                Background="#0F766E" Foreground="White" BorderThickness="0" />
                                     </WrapPanel>
                                     <TextBlock Text="{Binding ErrorMessage}" Foreground="#B91C1C" TextWrapping="Wrap" Margin="0,10,0,0" />
                                 </StackPanel>

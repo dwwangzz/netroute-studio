@@ -1,0 +1,22 @@
+<Window x:Class="NetRouteStudio.App.BatchRouteResultWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="批量路由执行结果" Width="760" Height="480" MinWidth="620" MinHeight="380"
+        WindowStartupLocation="CenterOwner" Background="#F3F6FA">
+    <Grid Margin="20">
+        <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+        <StackPanel Margin="0,0,0,12">
+            <TextBlock Text="批量路由执行结果" FontSize="22" FontWeight="SemiBold" />
+            <TextBlock Text="{Binding Summary}" Foreground="#6B7280" Margin="0,5,0,0" />
+        </StackPanel>
+        <DataGrid Grid.Row="1" ItemsSource="{Binding Results}" AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False">
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="操作" Binding="{Binding OperationDisplay}" Width="72" />
+                <DataGridTextColumn Header="目标" Binding="{Binding DestinationPrefix}" Width="180" />
+                <DataGridCheckBoxColumn Header="成功" Binding="{Binding Succeeded}" Width="62" />
+                <DataGridTextColumn Header="结果" Binding="{Binding Message}" Width="*" MinWidth="280" />
+            </DataGrid.Columns>
+        </DataGrid>
+        <Button Grid.Row="2" Content="关闭" IsCancel="True" HorizontalAlignment="Right" Padding="20,8" Margin="0,14,0,0" />
+    </Grid>
+</Window>
