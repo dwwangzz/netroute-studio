@@ -8,7 +8,7 @@
         <Grid>
             <StackPanel>
                 <TextBlock Text="IPv4 路由备份" FontSize="24" FontWeight="SemiBold" />
-                <TextBlock Text="创建带版本和 SHA-256 校验的 JSON 备份；当前阶段仅预览，不执行恢复。" Foreground="#6B7280" Margin="0,5,0,0" />
+                <TextBlock Text="创建或校验 JSON 备份，并与当前系统比较后选择性恢复；不会删除当前额外路由。" Foreground="#6B7280" Margin="0,5,0,0" />
             </StackPanel>
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
                 <Button Command="{Binding CreateBackupCommand}" Content="创建备份" Padding="16,8" Margin="0,0,10,0"
@@ -31,7 +31,23 @@
             </Grid>
         </Border>
 
-        <TabControl Grid.Row="2">
+        <Grid Grid.Row="2">
+            <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
+            <Border Background="#FEF2F2" BorderBrush="#FCA5A5" BorderThickness="1" CornerRadius="6" Padding="9"
+                    Margin="0,0,0,8">
+                <Border.Style>
+                    <Style TargetType="Border">
+                        <Setter Property="Visibility" Value="Visible" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding HostWarning}" Value="">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Border.Style>
+                <TextBlock Text="{Binding HostWarning}" Foreground="#B91C1C" TextWrapping="Wrap" />
+            </Border>
+        <TabControl Grid.Row="1">
             <TabItem Header="IPv4 路由">
                 <DataGrid ItemsSource="{Binding Routes}" AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False"
                           HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
@@ -62,7 +78,51 @@
                     </DataGrid.Columns>
                 </DataGrid>
             </TabItem>
+            <TabItem Header="差异与选择性恢复">
+                <Grid Margin="8">
+                    <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
+                    <DockPanel Margin="0,0,0,8">
+                        <TextBlock Text="只恢复勾选的缺失或配置不同路由；仅当前存在的路由不会删除。"
+                                   Foreground="#92400E" VerticalAlignment="Center" />
+                        <StackPanel Orientation="Horizontal" DockPanel.Dock="Right">
+                            <Button Command="{Binding CompareCurrentCommand}" Content="比较当前系统" Padding="14,7" Margin="0,0,8,0" />
+                            <Button Command="{Binding RestoreSelectedCommand}" Content="预览命令并恢复选中项" Padding="14,7"
+                                    Background="#DC2626" Foreground="White" BorderThickness="0" />
+                        </StackPanel>
+                    </DockPanel>
+                    <DataGrid Grid.Row="1" ItemsSource="{Binding RestoreItems}" AutoGenerateColumns="False" CanUserAddRows="False"
+                              HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+                        <DataGrid.Columns>
+                            <DataGridTemplateColumn Header="恢复" Width="55">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <CheckBox IsChecked="{Binding IsSelected}" IsEnabled="{Binding CanRestore}" HorizontalAlignment="Center" />
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                            <DataGridTextColumn Header="差异" Binding="{Binding DifferenceDisplay}" IsReadOnly="True" Width="130" />
+                            <DataGridTextColumn Header="风险" Binding="{Binding RiskDisplay}" IsReadOnly="True" Width="145" />
+                            <DataGridTextColumn Header="目标" Binding="{Binding DestinationPrefix}" IsReadOnly="True" Width="180" />
+                            <DataGridTextColumn Header="下一跳" Binding="{Binding NextHop}" IsReadOnly="True" Width="150" />
+                            <DataGridTemplateColumn Header="恢复到当前接口" Width="260">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <ComboBox ItemsSource="{Binding DataContext.CurrentAdapters, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                  SelectedItem="{Binding SelectedAdapter}" DisplayMemberPath="SelectionDisplay"
+                                                  IsEnabled="{Binding CanRestore}" />
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                            <DataGridTextColumn Header="备份 Metric" Binding="{Binding BackupMetric}" IsReadOnly="True" Width="90" />
+                            <DataGridTextColumn Header="当前 Metric" Binding="{Binding CurrentMetric}" IsReadOnly="True" Width="90" />
+                            <DataGridTextColumn Header="备份状态" Binding="{Binding BackupLifetime}" IsReadOnly="True" Width="120" />
+                            <DataGridTextColumn Header="当前状态" Binding="{Binding CurrentLifetime}" IsReadOnly="True" Width="120" />
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </Grid>
+            </TabItem>
         </TabControl>
+        </Grid>
 
         <Grid Grid.Row="3" Margin="0,14,0,0">
             <StackPanel>
