@@ -1,0 +1,90 @@
+name: 手动构建并发布
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "发布版本（例如 v1.0.0）"
+        required: true
+        type: string
+      prerelease:
+        description: "标记为预发布版本"
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    name: 构建并发布 Windows 制品
+    runs-on: windows-latest
+
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 校验版本号
+        shell: pwsh
+        run: |
+          if ("${{ inputs.version }}" -notmatch '^v\d+\.\d+\.\d+([.-][0-9A-Za-z.-]+)?$') {
+            throw "版本号必须使用 v1.0.0 或 v1.0.0-beta.1 格式。"
+          }
+
+      - name: 安装 .NET 8 SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: 恢复依赖
+        run: dotnet restore NetRouteStudio.sln --configfile NuGet.Config --disable-parallel
+
+      - name: 构建
+        run: dotnet build NetRouteStudio.sln --configuration Release --no-restore --maxcpucount:1
+
+      - name: 运行测试
+        run: dotnet test NetRouteStudio.sln --configuration Release --no-build --maxcpucount:1
+
+      - name: 发布运行时依赖版
+        run: >-
+          dotnet publish src/NetRouteStudio.App/NetRouteStudio.App.csproj
+          --configuration Release
+          --runtime win-x64
+          --self-contained false
+          --output artifacts/framework-dependent
+          -p:DebugType=None
+          -p:DebugSymbols=false
+
+      - name: 发布自包含版
+        run: >-
+          dotnet publish src/NetRouteStudio.App/NetRouteStudio.App.csproj
+          --configuration Release
+          --runtime win-x64
+          --self-contained true
+          --output artifacts/self-contained
+          -p:DebugType=None
+          -p:DebugSymbols=false
+
+      - name: 打包制品
+        shell: pwsh
+        run: |
+          Compress-Archive `
+            -Path artifacts/framework-dependent/* `
+            -DestinationPath "artifacts/NetRouteStudio-${{ inputs.version }}-win-x64-framework-dependent.zip"
+          Compress-Archive `
+            -Path artifacts/self-contained/* `
+            -DestinationPath "artifacts/NetRouteStudio-${{ inputs.version }}-win-x64-self-contained.zip"
+
+      - name: 创建 GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ inputs.version }}
+          name: NetRoute Studio ${{ inputs.version }}
+          target_commitish: ${{ github.sha }}
+          prerelease: ${{ inputs.prerelease }}
+          generate_release_notes: true
+          fail_on_unmatched_files: true
+          files: |
+            artifacts/NetRouteStudio-${{ inputs.version }}-win-x64-framework-dependent.zip
+            artifacts/NetRouteStudio-${{ inputs.version }}-win-x64-self-contained.zip
