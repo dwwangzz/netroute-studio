@@ -5,9 +5,19 @@ namespace NetRouteStudio.App;
 
 public partial class MainWindow : Window
 {
-    public MainWindow(RouteMatchViewModel viewModel)
+    private readonly RouteManagementViewModel _viewModel;
+
+    public MainWindow(RouteManagementViewModel viewModel)
     {
         InitializeComponent();
+        _viewModel = viewModel;
         DataContext = viewModel;
+        Loaded += OnLoaded;
+    }
+
+    private async void OnLoaded(object sender, RoutedEventArgs e)
+    {
+        Loaded -= OnLoaded;
+        await _viewModel.RefreshAsync();
     }
 }

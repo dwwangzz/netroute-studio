@@ -71,10 +71,13 @@ public partial class App : Application
                 services.AddSingleton<INetworkAdapterService, NetworkAdapterService>();
                 services.AddSingleton<IRouteTableService, RouteTableService>();
                 services.AddSingleton<IRouteMatchService, RouteMatchService>();
+                services.AddSingleton<IIPv4RouteManagementService, IPv4RouteManagementService>();
+                services.AddSingleton<IConfirmationService, MessageBoxConfirmationService>();
                 services.AddSingleton<GlobalExceptionHandler>();
                 services.AddSingleton<MainWindowViewModel>();
                 services.AddSingleton<RouteTableViewModel>();
                 services.AddSingleton<RouteMatchViewModel>();
+                services.AddSingleton<RouteManagementViewModel>();
                 services.AddSingleton<MainWindow>();
             })
             .Build();
