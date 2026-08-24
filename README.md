@@ -49,7 +49,7 @@ dotnet publish src/NetRouteStudio.App/NetRouteStudio.App.csproj --no-restore --c
 
 日志写入 `%LOCALAPPDATA%\NetRouteStudio\logs`，按天滚动并保留 14 个文件。
 
-当前稳定版本：`1.0.1`。详细变化见 [CHANGELOG.md](CHANGELOG.md)。
+当前稳定版本：`1.0.2`。详细变化见 [CHANGELOG.md](CHANGELOG.md)。
 
 ## GitHub Actions 发布
 
