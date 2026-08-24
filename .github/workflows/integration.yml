@@ -1,0 +1,32 @@
+name: 真实网络集成测试
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 2 * * 1'
+
+permissions:
+  contents: read
+
+jobs:
+  integration:
+    name: Windows 真实网络测试（非阻断）
+    continue-on-error: true
+    runs-on: windows-latest
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 安装 .NET 8 SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: 恢复依赖
+        run: dotnet restore NetRouteStudio.sln --configfile NuGet.Config --disable-parallel
+
+      - name: Release 构建
+        run: dotnet build NetRouteStudio.sln --configuration Release --no-restore --maxcpucount:1
+
+      - name: 运行真实网络集成测试
+        run: dotnet test NetRouteStudio.sln --configuration Release --no-build --maxcpucount:1 --filter "Category=Integration"

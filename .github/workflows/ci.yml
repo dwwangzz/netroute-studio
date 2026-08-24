@@ -1,0 +1,33 @@
+name: 持续集成
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+    branches: [master, main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: 构建与稳定测试
+    runs-on: windows-latest
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 安装 .NET 8 SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: 恢复依赖
+        run: dotnet restore NetRouteStudio.sln --configfile NuGet.Config --disable-parallel
+
+      - name: Release 构建
+        run: dotnet build NetRouteStudio.sln --configuration Release --no-restore --maxcpucount:1
+
+      - name: 运行稳定测试
+        run: dotnet test NetRouteStudio.sln --configuration Release --no-build --maxcpucount:1 --filter "Category!=Integration"

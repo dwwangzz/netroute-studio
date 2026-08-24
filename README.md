@@ -53,10 +53,9 @@ dotnet publish src/NetRouteStudio.App/NetRouteStudio.App.csproj --no-restore --c
 
 ## GitHub Actions 发布
 
-- 推送到 `master`/`main` 或创建 Pull Request 时自动执行 Release 构建和不依赖外部网络环境的稳定测试，并上传临时构建产物。
-- 推送 `v*` 标签（例如 `v1.0.1`）时，标签版本会自动写入程序集，生成 `win-x64` 自包含 ZIP、SHA-256 校验文件和 GitHub Release。
-- 也可以在 Actions 页面手动运行工作流并填写 `v1.0.1` 格式的版本号。
-- 依赖真实 Windows 网卡、路由、DNS 和公网的集成测试在手动运行及每周计划任务中单独执行；外部网络限制导致的失败不会阻止正式发布。
+- `ci.yml`：推送到 `master`/`main` 或创建 Pull Request 时执行 Release 构建和稳定测试，不生成发布包。
+- `release.yml`：仅在推送 `v*` 标签或手动发布时执行稳定测试、自包含打包、SHA-256 和 GitHub Release。
+- `integration.yml`：手动或每周运行依赖真实 Windows 网卡、路由、DNS 和公网的集成测试；外部网络限制导致的失败不会阻止发布。
 
 ```powershell
 git tag v1.0.1
