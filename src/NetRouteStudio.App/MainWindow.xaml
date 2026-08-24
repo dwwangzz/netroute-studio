@@ -21,9 +21,9 @@
                     <TextBlock Text="✓  路由查看" Foreground="#6B7280" Margin="0,7" />
                     <TextBlock Text="✓  路由匹配" Foreground="#6B7280" Margin="0,7" />
                     <TextBlock Text="●  IPv4 路由管理" Foreground="{StaticResource PrimaryBrush}" FontWeight="SemiBold" Margin="0,7" />
-                    <Button Content="IPv4 网卡跃点" Click="OnOpenIPv4InterfaceMetric" HorizontalContentAlignment="Left"
+                    <Button Content="网卡跃点管理" Click="OnOpenIPv4InterfaceMetric" HorizontalContentAlignment="Left"
                             Margin="0,5" Padding="8,7" Background="#ECFDF5" Foreground="#047857" BorderBrush="#A7F3D0"
-                            ToolTip="查看并设置 IPv4 接口自动或手动 Metric" />
+                            ToolTip="查看并设置 IPv4、IPv6 接口自动或手动 Metric" />
                     <TextBlock Text="○  备份恢复" Foreground="#9CA3AF" Margin="0,7" />
                     <TextBlock Text="○  网络测试" Foreground="#9CA3AF" Margin="0,7" />
                 </StackPanel>

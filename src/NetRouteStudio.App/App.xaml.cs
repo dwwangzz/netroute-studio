@@ -74,6 +74,7 @@ public partial class App : Application
                 services.AddSingleton<IRouteMatchService, RouteMatchService>();
                 services.AddSingleton<IIPv4RouteManagementService, IPv4RouteManagementService>();
                 services.AddSingleton<IIPv4InterfaceMetricService, IPv4InterfaceMetricService>();
+                services.AddSingleton<IIPv6InterfaceMetricService, IPv6InterfaceMetricService>();
                 services.AddSingleton<IConfirmationService, RouteConfirmationService>();
                 services.AddSingleton<IBatchRouteDialogService, BatchRouteDialogService>();
                 services.AddSingleton<IIPv4InterfaceMetricDialogService, IPv4InterfaceMetricDialogService>();
