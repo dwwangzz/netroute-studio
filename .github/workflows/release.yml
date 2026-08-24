@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 发布版本（例如 v1.0.3）
+        description: 发布版本（例如 v1.0.4）
         required: true
         type: string
       prerelease:
@@ -85,6 +85,9 @@ jobs:
       - name: 生成安装程序
         shell: pwsh
         run: |
+          if (-not (Test-Path "installer/Languages/ChineseSimplified.isl")) {
+            throw "缺少仓库内置的 Inno Setup 简体中文语言文件。"
+          }
           $sourceDir = (Resolve-Path "artifacts/publish").Path
           $outputDir = (Resolve-Path "artifacts").Path
           & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" `
