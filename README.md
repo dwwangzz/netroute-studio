@@ -50,3 +50,14 @@ dotnet publish src/NetRouteStudio.App/NetRouteStudio.App.csproj --no-restore --c
 日志写入 `%LOCALAPPDATA%\NetRouteStudio\logs`，按天滚动并保留 14 个文件。
 
 当前稳定版本：`1.0.0`。详细变化见 [CHANGELOG.md](CHANGELOG.md)。
+
+## GitHub Actions 发布
+
+- 推送到 `master`/`main` 或创建 Pull Request 时自动执行 Release 构建和全部测试，并上传临时构建产物。
+- 推送 `v*` 标签（例如 `v1.0.1`）时，标签版本会自动写入程序集，生成 `win-x64` 自包含 ZIP、SHA-256 校验文件和 GitHub Release。
+- 也可以在 Actions 页面手动运行工作流并填写 `v1.0.1` 格式的版本号。
+
+```powershell
+git tag v1.0.1
+git push origin v1.0.1
+```

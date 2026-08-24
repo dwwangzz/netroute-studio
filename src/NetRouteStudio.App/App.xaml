@@ -5,6 +5,9 @@
         <SolidColorBrush x:Key="WindowBackgroundBrush" Color="#F3F6FA" />
         <SolidColorBrush x:Key="CardBackgroundBrush" Color="#FFFFFF" />
         <SolidColorBrush x:Key="PrimaryBrush" Color="#2563EB" />
+        <Style TargetType="{x:Type Window}">
+            <Setter Property="Icon" Value="/Assets/NetRouteStudio.ico" />
+        </Style>
         <Style TargetType="{x:Type ScrollBar}">
             <Setter Property="Opacity" Value="0.42" />
             <Setter Property="Background" Value="Transparent" />

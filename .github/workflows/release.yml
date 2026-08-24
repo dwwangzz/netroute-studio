@@ -1,36 +1,61 @@
-name: 手动构建并发布
+name: 构建与发布
 
 on:
+  push:
+    branches: [master, main]
+    tags: ['v*']
+  pull_request:
+    branches: [master, main]
   workflow_dispatch:
     inputs:
       version:
-        description: "发布版本（例如 v1.0.0）"
-        required: true
+        description: 发布版本（例如 v1.0.1；留空仅构建）
+        required: false
         type: string
       prerelease:
-        description: "标记为预发布版本"
+        description: 标记为预发布版本
         required: true
         default: false
         type: boolean
 
-permissions:
-  contents: write
-
 jobs:
-  build-and-release:
-    name: 构建并发布 Windows 制品
+  build:
+    name: 构建、测试与打包
     runs-on: windows-latest
-
+    permissions:
+      contents: read
+    outputs:
+      release_version: ${{ steps.version.outputs.release_version }}
+      package_name: ${{ steps.version.outputs.package_name }}
+      should_release: ${{ steps.version.outputs.should_release }}
     steps:
       - name: 检出代码
         uses: actions/checkout@v4
 
-      - name: 校验版本号
+      - name: 计算版本
+        id: version
         shell: pwsh
+        env:
+          MANUAL_VERSION: ${{ inputs.version }}
         run: |
-          if ("${{ inputs.version }}" -notmatch '^v\d+\.\d+\.\d+([.-][0-9A-Za-z.-]+)?$') {
+          $releaseVersion = ""
+          if ($env:GITHUB_REF -like "refs/tags/v*") {
+            $releaseVersion = $env:GITHUB_REF_NAME
+          } elseif ($env:MANUAL_VERSION) {
+            $releaseVersion = $env:MANUAL_VERSION
+          }
+          if ($releaseVersion -and $releaseVersion -notmatch '^v(\d+\.\d+\.\d+)([.-][0-9A-Za-z.-]+)?$') {
             throw "版本号必须使用 v1.0.0 或 v1.0.0-beta.1 格式。"
           }
+          $assemblyVersion = if ($releaseVersion) { $releaseVersion.Substring(1) } else { "1.0.0-ci.$env:GITHUB_RUN_NUMBER" }
+          $numericVersion = if ($releaseVersion) { [regex]::Match($releaseVersion, '^v(\d+\.\d+\.\d+)').Groups[1].Value } else { "1.0.0" }
+          $packageVersion = if ($releaseVersion) { $releaseVersion } else { "ci-$env:GITHUB_RUN_NUMBER" }
+          "release_version=$releaseVersion" >> $env:GITHUB_OUTPUT
+          "assembly_version=$assemblyVersion" >> $env:GITHUB_OUTPUT
+          "numeric_version=$numericVersion.0" >> $env:GITHUB_OUTPUT
+          "package_name=NetRouteStudio-$packageVersion-win-x64-self-contained" >> $env:GITHUB_OUTPUT
+          $shouldRelease = [bool]$releaseVersion
+          "should_release=$($shouldRelease.ToString().ToLowerInvariant())" >> $env:GITHUB_OUTPUT
 
       - name: 安装 .NET 8 SDK
         uses: actions/setup-dotnet@v4
@@ -38,53 +63,71 @@ jobs:
           dotnet-version: 8.0.x
 
       - name: 恢复依赖
-        run: dotnet restore NetRouteStudio.sln --configfile NuGet.Config --disable-parallel
+        run: dotnet restore NetRouteStudio.sln --configfile NuGet.Config --runtime win-x64 --disable-parallel
 
-      - name: 构建
-        run: dotnet build NetRouteStudio.sln --configuration Release --no-restore --maxcpucount:1
+      - name: Release 构建
+        run: >-
+          dotnet build NetRouteStudio.sln --configuration Release --no-restore --maxcpucount:1
+          -p:Version=${{ steps.version.outputs.assembly_version }}
+          -p:AssemblyVersion=${{ steps.version.outputs.numeric_version }}
+          -p:FileVersion=${{ steps.version.outputs.numeric_version }}
+          -p:InformationalVersion=${{ steps.version.outputs.assembly_version }}
+          -p:IncludeSourceRevisionInInformationalVersion=false
 
-      - name: 运行测试
+      - name: 运行全部测试
         run: dotnet test NetRouteStudio.sln --configuration Release --no-build --maxcpucount:1
 
-      - name: 发布运行时依赖版
+      - name: 发布自包含程序
         run: >-
           dotnet publish src/NetRouteStudio.App/NetRouteStudio.App.csproj
-          --configuration Release
-          --runtime win-x64
-          --self-contained false
-          --output artifacts/framework-dependent
-          -p:DebugType=None
-          -p:DebugSymbols=false
+          --configuration Release --runtime win-x64 --self-contained true --no-restore
+          --output artifacts/publish -p:Version=${{ steps.version.outputs.assembly_version }}
+          -p:AssemblyVersion=${{ steps.version.outputs.numeric_version }}
+          -p:FileVersion=${{ steps.version.outputs.numeric_version }}
+          -p:InformationalVersion=${{ steps.version.outputs.assembly_version }}
+          -p:IncludeSourceRevisionInInformationalVersion=false
+          -p:DebugType=None -p:DebugSymbols=false
 
-      - name: 发布自包含版
-        run: >-
-          dotnet publish src/NetRouteStudio.App/NetRouteStudio.App.csproj
-          --configuration Release
-          --runtime win-x64
-          --self-contained true
-          --output artifacts/self-contained
-          -p:DebugType=None
-          -p:DebugSymbols=false
-
-      - name: 打包制品
+      - name: 打包并生成 SHA-256
         shell: pwsh
         run: |
-          Compress-Archive `
-            -Path artifacts/framework-dependent/* `
-            -DestinationPath "artifacts/NetRouteStudio-${{ inputs.version }}-win-x64-framework-dependent.zip"
-          Compress-Archive `
-            -Path artifacts/self-contained/* `
-            -DestinationPath "artifacts/NetRouteStudio-${{ inputs.version }}-win-x64-self-contained.zip"
+          $zip = "artifacts/${{ steps.version.outputs.package_name }}.zip"
+          Compress-Archive -Path artifacts/publish/* -DestinationPath $zip
+          $hash = (Get-FileHash -Algorithm SHA256 $zip).Hash.ToLowerInvariant()
+          "$hash  $([IO.Path]::GetFileName($zip))" | Set-Content -Encoding ascii "$zip.sha256"
+
+      - name: 上传构建产物
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.version.outputs.package_name }}
+          path: |
+            artifacts/${{ steps.version.outputs.package_name }}.zip
+            artifacts/${{ steps.version.outputs.package_name }}.zip.sha256
+          if-no-files-found: error
+
+  release:
+    name: 创建 GitHub Release
+    needs: build
+    if: needs.build.outputs.should_release == 'true'
+    runs-on: windows-latest
+    permissions:
+      contents: write
+    steps:
+      - name: 下载构建产物
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ needs.build.outputs.package_name }}
+          path: artifacts
 
       - name: 创建 GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ inputs.version }}
-          name: NetRoute Studio ${{ inputs.version }}
+          tag_name: ${{ needs.build.outputs.release_version }}
+          name: NetRoute Studio ${{ needs.build.outputs.release_version }}
           target_commitish: ${{ github.sha }}
-          prerelease: ${{ inputs.prerelease }}
+          prerelease: ${{ inputs.prerelease || contains(needs.build.outputs.release_version, '-') }}
           generate_release_notes: true
           fail_on_unmatched_files: true
           files: |
-            artifacts/NetRouteStudio-${{ inputs.version }}-win-x64-framework-dependent.zip
-            artifacts/NetRouteStudio-${{ inputs.version }}-win-x64-self-contained.zip
+            artifacts/${{ needs.build.outputs.package_name }}.zip
+            artifacts/${{ needs.build.outputs.package_name }}.zip.sha256
