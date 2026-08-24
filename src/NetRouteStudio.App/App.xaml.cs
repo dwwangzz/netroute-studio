@@ -77,11 +77,13 @@ public partial class App : Application
                 services.AddSingleton<IIPv6InterfaceMetricService, IPv6InterfaceMetricService>();
                 services.AddSingleton<IRouteBackupService, RouteBackupService>();
                 services.AddSingleton<IRouteRestoreComparisonService, RouteRestoreComparisonService>();
+                services.AddSingleton<IIPv6ResetService, IPv6ResetService>();
                 services.AddSingleton<IConfirmationService, RouteConfirmationService>();
                 services.AddSingleton<IBatchRouteDialogService, BatchRouteDialogService>();
                 services.AddSingleton<IIPv4InterfaceMetricDialogService, IPv4InterfaceMetricDialogService>();
                 services.AddSingleton<IRouteBackupFileDialogService, RouteBackupFileDialogService>();
                 services.AddSingleton<IRouteBackupDialogService, RouteBackupDialogService>();
+                services.AddSingleton<IIPv6ResetDialogService, IPv6ResetDialogService>();
                 services.AddSingleton<GlobalExceptionHandler>();
                 services.AddSingleton<MainWindowViewModel>();
                 services.AddSingleton<RouteTableViewModel>();
@@ -91,6 +93,8 @@ public partial class App : Application
                 services.AddTransient<IPv4InterfaceMetricWindow>();
                 services.AddTransient<RouteBackupViewModel>();
                 services.AddTransient<RouteBackupWindow>();
+                services.AddTransient<IPv6ResetViewModel>();
+                services.AddTransient<IPv6ResetWindow>();
                 services.AddSingleton<MainWindow>();
             })
             .Build();
