@@ -16,7 +16,7 @@ public sealed class RouteTableServiceTests
               "AddressFamily":"IPv4","DestinationPrefix":"10.0.0.0/8",
               "NextHop":"192.168.1.1","InterfaceAlias":"Ethernet","InterfaceIndex":7,
               "RouteMetric":10,"InterfaceMetric":25,"Protocol":"NetMgmt",
-              "IsPersistent":true,"IsUserOperable":true
+              "IsPersistent":true,"IsActive":true,"IsUserOperable":true
             }]}
             """;
         var executor = new JsonStubPowerShellExecutor(json);
@@ -33,6 +33,26 @@ public sealed class RouteTableServiceTests
     }
 
     [Fact]
+    public async Task 获取路由_永久存储独有路由_应保留并标记未生效()
+    {
+        const string json = """
+            {"Items":[{
+              "AddressFamily":"IPv4","DestinationPrefix":"192.168.41.0/24",
+              "NextHop":"192.168.47.60","InterfaceAlias":"","InterfaceIndex":12,
+              "RouteMetric":1,"InterfaceMetric":0,"Protocol":"NetMgmt",
+              "IsPersistent":true,"IsActive":false,"IsUserOperable":true
+            }]}
+            """;
+        var service = new RouteTableService(new JsonStubPowerShellExecutor(json));
+
+        var route = (await service.GetRoutesAsync()).Should().ContainSingle().Subject;
+
+        route.IsPersistent.Should().BeTrue();
+        route.IsActive.Should().BeFalse();
+        route.LifetimeDisplay.Should().Be("永久（未生效）");
+    }
+
+    [Fact]
     [Trait("Category", "Integration")]
     public async Task 获取真实Windows路由_应返回合法结构化数据()
     {
@@ -44,7 +64,7 @@ public sealed class RouteTableServiceTests
         routes.Should().NotBeEmpty();
         routes.Should().OnlyContain(route =>
             !string.IsNullOrWhiteSpace(route.DestinationPrefix) &&
-            route.InterfaceIndex > 0 &&
+            (route.InterfaceIndex > 0 || (!route.IsActive && route.IsPersistent)) &&
             route.RouteMetric >= 0 &&
             route.InterfaceMetric >= 0);
         routes.Should().Contain(route => route.AddressFamily == RouteAddressFamily.IPv4);

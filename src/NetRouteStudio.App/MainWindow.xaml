@@ -34,27 +34,37 @@
                             <TextBlock Text="IPv4 路由管理" FontSize="26" FontWeight="SemiBold" Foreground="#111827" />
                             <TextBlock Text="所有操作完成后都会重新读取 Windows 实际路由表进行验证" Foreground="#6B7280" Margin="0,5,0,0" />
                         </StackPanel>
+                        <TextBox Grid.Column="0" Width="260" Height="34" HorizontalAlignment="Right"
+                                 VerticalContentAlignment="Center" Margin="0,0,18,0" Padding="9,0"
+                                 Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
+                                 ToolTip="搜索目标、下一跳、接口、索引、状态或来源" />
                         <Button Grid.Column="1" Command="{Binding RefreshCommand}" Content="刷新" Width="78" Height="34"
                                 Background="{StaticResource PrimaryBrush}" Foreground="White" BorderThickness="0" />
                     </Grid>
                     <Border Grid.Row="1" Background="#FFF7ED" BorderBrush="#FED7AA" BorderThickness="1" CornerRadius="6" Padding="10" Margin="0,14,0,14">
-                        <TextBlock Text="修改路由可能立即影响网络连接。系统管理路由不会出现在可编辑列表中。" Foreground="#9A3412" />
+                        <TextBlock Text="修改或删除系统路由可能立即中断网络连接，请在确认目标、接口和 Metric 后操作。" Foreground="#9A3412" />
                     </Border>
                     <Grid Grid.Row="2">
                         <Grid.ColumnDefinitions><ColumnDefinition Width="1.35*" /><ColumnDefinition Width="20" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
                         <Grid Grid.Column="0">
                             <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
-                            <TextBlock Text="可管理的 IPv4 路由" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,8" />
+                            <TextBlock Text="全部 IPv4 路由" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,8" />
                             <DataGrid Grid.Row="1" ItemsSource="{Binding Routes}" SelectedItem="{Binding SelectedRoute}"
                                       AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False"
-                                      GridLinesVisibility="Horizontal" SelectionMode="Single" SelectionUnit="FullRow">
+                                      CanUserResizeColumns="True" GridLinesVisibility="Horizontal"
+                                      SelectionMode="Single" SelectionUnit="FullRow"
+                                      ScrollViewer.HorizontalScrollBarVisibility="Auto"
+                                      ScrollViewer.VerticalScrollBarVisibility="Auto">
                                 <DataGrid.Columns>
-                                    <DataGridTextColumn Header="目标" Binding="{Binding DestinationPrefix}" Width="1.25*" />
-                                    <DataGridTextColumn Header="下一跳" Binding="{Binding NextHop}" Width="1.1*" />
-                                    <DataGridTextColumn Header="接口" Binding="{Binding InterfaceAlias}" Width="*" />
+                                    <DataGridTextColumn Header="目标" Binding="{Binding DestinationPrefix}" Width="170" MinWidth="120" />
+                                    <DataGridTextColumn Header="下一跳" Binding="{Binding NextHop}" Width="150" MinWidth="110" />
+                                    <DataGridTextColumn Header="接口" Binding="{Binding InterfaceAlias}" Width="170" MinWidth="100" />
                                     <DataGridTextColumn Header="索引" Binding="{Binding InterfaceIndex}" Width="48" />
-                                    <DataGridTextColumn Header="跃点" Binding="{Binding RouteMetric}" Width="48" />
-                                    <DataGridTextColumn Header="范围" Binding="{Binding LifetimeDisplay}" Width="54" />
+                                    <DataGridTextColumn Header="路由 Metric" Binding="{Binding RouteMetric}" Width="76" />
+                                    <DataGridTextColumn Header="接口 Metric" Binding="{Binding InterfaceMetric}" Width="76" />
+                                    <DataGridTextColumn Header="有效 Metric" Binding="{Binding EffectiveMetric}" Width="76" />
+                                    <DataGridTextColumn Header="状态" Binding="{Binding LifetimeDisplay}" Width="110" />
+                                    <DataGridTextColumn Header="来源" Binding="{Binding OperabilityDisplay}" Width="88" />
                                 </DataGrid.Columns>
                             </DataGrid>
                         </Grid>
@@ -65,10 +75,14 @@
                                     <TextBlock Text="目标 CIDR" FontWeight="SemiBold" Margin="0,15,0,4" />
                                     <TextBox Text="{Binding DestinationPrefix, UpdateSourceTrigger=PropertyChanged}" Padding="8,6" ToolTip="例如 10.20.0.0/16" />
                                     <TextBlock Text="下一跳" FontWeight="SemiBold" Margin="0,12,0,4" />
-                                    <TextBox Text="{Binding NextHop, UpdateSourceTrigger=PropertyChanged}" Padding="8,6" ToolTip="留空表示 on-link" />
-                                    <TextBlock Text="接口索引" FontWeight="SemiBold" Margin="0,12,0,4" />
-                                    <TextBox Text="{Binding InterfaceIndex, UpdateSourceTrigger=PropertyChanged}" Padding="8,6" />
-                                    <TextBlock Text="路由跃点" FontWeight="SemiBold" Margin="0,12,0,4" />
+                                    <ComboBox ItemsSource="{Binding NextHopOptions}" Text="{Binding NextHop, UpdateSourceTrigger=PropertyChanged}"
+                                              IsEditable="True" IsTextSearchEnabled="False" Padding="8,6"
+                                              ToolTip="选择已有网关、手动输入，或使用 0.0.0.0 表示在链路上" />
+                                    <TextBlock Text="网络接口" FontWeight="SemiBold" Margin="0,12,0,4" />
+                                    <ComboBox ItemsSource="{Binding Adapters}" SelectedItem="{Binding SelectedAdapter}"
+                                              DisplayMemberPath="SelectionDisplay" Padding="8,6"
+                                              ToolTip="只能选择 Windows 当前存在的网络接口" />
+                                    <TextBlock Text="路由 Metric" FontWeight="SemiBold" Margin="0,12,0,4" />
                                     <TextBox Text="{Binding RouteMetric, UpdateSourceTrigger=PropertyChanged}" Padding="8,6" />
                                     <CheckBox IsChecked="{Binding IsPersistent}" Content="永久保存（默认仅临时生效）" Margin="0,14,0,0" />
                                     <WrapPanel Margin="0,18,0,0">

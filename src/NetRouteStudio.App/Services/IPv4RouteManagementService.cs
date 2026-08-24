@@ -5,7 +5,8 @@ namespace NetRouteStudio.App.Services;
 
 public sealed class IPv4RouteManagementService(
     IPowerShellExecutor powerShellExecutor,
-    IRouteTableService routeTableService) : IIPv4RouteManagementService
+    IRouteTableService routeTableService,
+    INetworkAdapterService networkAdapterService) : IIPv4RouteManagementService
 {
     private static readonly TimeSpan MutationTimeout = TimeSpan.FromSeconds(20);
 
@@ -14,6 +15,7 @@ public sealed class IPv4RouteManagementService(
         CancellationToken cancellationToken = default)
     {
         var normalized = IPv4RouteValidator.ValidateAndNormalize(request);
+        await EnsureInterfaceExistsAsync(normalized.InterfaceIndex, cancellationToken);
         await ExecuteMutationAsync(BuildCreateCommand(normalized), cancellationToken);
         var verifiedRoute = await FindVerifiedRouteAsync(normalized, cancellationToken);
         if (verifiedRoute is null)
@@ -31,6 +33,7 @@ public sealed class IPv4RouteManagementService(
     {
         ValidateOperableRoute(existingRoute);
         var normalized = IPv4RouteValidator.ValidateAndNormalize(request);
+        await EnsureInterfaceExistsAsync(normalized.InterfaceIndex, cancellationToken);
         await ExecuteMutationAsync(BuildUpdateCommand(existingRoute, normalized), cancellationToken);
         var verifiedRoute = await FindVerifiedRouteAsync(normalized, cancellationToken);
         if (verifiedRoute is null)
@@ -77,7 +80,8 @@ public sealed class IPv4RouteManagementService(
             route.AddressFamily == RouteAddressFamily.IPv4 &&
             route.DestinationPrefix == request.DestinationPrefix &&
             route.NextHop == request.NextHop &&
-            route.InterfaceIndex == request.InterfaceIndex &&
+            (route.InterfaceIndex == request.InterfaceIndex ||
+             (request.IsPersistent && !route.IsActive && route.InterfaceIndex == 0)) &&
             route.RouteMetric == request.RouteMetric &&
             route.IsPersistent == request.IsPersistent);
     }
@@ -96,7 +100,7 @@ public sealed class IPv4RouteManagementService(
         var oldStore = GetPolicyStore(existing.IsPersistent);
         var newStore = GetPolicyStore(request.IsPersistent);
         return $$"""
-            Remove-NetRoute -DestinationPrefix '{{existing.DestinationPrefix}}' -InterfaceIndex {{existing.InterfaceIndex}} -NextHop '{{existing.NextHop}}' -PolicyStore {{oldStore}} -Confirm:$false -ErrorAction Stop
+            Remove-NetRoute -DestinationPrefix '{{existing.DestinationPrefix}}' -InterfaceIndex {{existing.InterfaceIndex}} -NextHop '{{existing.NextHop}}' -PolicyStore {{oldStore}} -Confirm:$false -ErrorAction Stop | Out-Null
             try {
                 New-NetRoute -DestinationPrefix '{{request.DestinationPrefix}}' -InterfaceIndex {{request.InterfaceIndex}} -NextHop '{{request.NextHop}}' -RouteMetric {{request.RouteMetric}} -PolicyStore {{newStore}} -ErrorAction Stop | Out-Null
             }
@@ -113,12 +117,21 @@ public sealed class IPv4RouteManagementService(
     {
         var store = GetPolicyStore(route.IsPersistent);
         return $$"""
-            Remove-NetRoute -DestinationPrefix '{{route.DestinationPrefix}}' -InterfaceIndex {{route.InterfaceIndex}} -NextHop '{{route.NextHop}}' -PolicyStore {{store}} -Confirm:$false -ErrorAction Stop
+            Remove-NetRoute -DestinationPrefix '{{route.DestinationPrefix}}' -InterfaceIndex {{route.InterfaceIndex}} -NextHop '{{route.NextHop}}' -PolicyStore {{store}} -Confirm:$false -ErrorAction Stop | Out-Null
             [pscustomobject]@{ Succeeded = $true }
             """;
     }
 
     private static string GetPolicyStore(bool persistent) => persistent ? "PersistentStore" : "ActiveStore";
+
+    private async Task EnsureInterfaceExistsAsync(int interfaceIndex, CancellationToken cancellationToken)
+    {
+        var adapters = await networkAdapterService.GetAdaptersAsync(cancellationToken);
+        if (adapters.All(adapter => adapter.InterfaceIndex != interfaceIndex))
+        {
+            throw new ArgumentException($"接口索引 {interfaceIndex} 不存在，请刷新网卡列表后重新选择。");
+        }
+    }
 
     private static void ValidateOperableRoute(RouteInfo route)
     {
@@ -128,10 +141,6 @@ public sealed class IPv4RouteManagementService(
             throw new ArgumentException("当前模块只允许管理 IPv4 路由。");
         }
 
-        if (!route.IsUserOperable)
-        {
-            throw new InvalidOperationException("该路由由系统管理，不允许通过当前模块修改或删除。");
-        }
     }
 
     private static bool IsSameRoute(RouteInfo left, RouteInfo right) =>

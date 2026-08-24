@@ -14,7 +14,7 @@ public sealed class IPv4RouteManagementServiceTests
         var created = Route("10.20.0.0/16", "0.0.0.0", 7, 25, false);
         var table = new StubRouteTableService([created]);
         var executor = new RecordingPowerShellExecutor();
-        var service = new IPv4RouteManagementService(executor, table);
+        var service = new IPv4RouteManagementService(executor, table, new StubNetworkAdapterService([Adapter(7)]));
 
         var result = await service.CreateAsync(new("10.20.0.0/16", "", 7, 25, false));
 
@@ -31,14 +31,32 @@ public sealed class IPv4RouteManagementServiceTests
         var existing = Route("10.20.0.0/16", "192.168.1.1", 7, 10, false);
         var changed = Route("10.30.0.0/16", "192.168.1.254", 7, 20, true);
         var executor = new RecordingPowerShellExecutor();
-        var service = new IPv4RouteManagementService(executor, new StubRouteTableService([changed]));
+        var service = new IPv4RouteManagementService(executor, new StubRouteTableService([changed]), new StubNetworkAdapterService([Adapter(7)]));
 
         var result = await service.UpdateAsync(existing, new("10.30.0.0/16", "192.168.1.254", 7, 20, true));
 
         result.VerifiedRoute.Should().Be(changed);
         executor.Command.Should().Contain("Remove-NetRoute");
+        executor.Command.Should().Contain("-ErrorAction Stop | Out-Null");
         executor.Command.Should().Contain("catch");
         executor.Command.Should().Contain("恢复原路由");
+    }
+
+    [Fact]
+    public async Task 临时路由转永久_永久存储返回接口零_应视为验证成功()
+    {
+        var existing = Route("10.112.21.0/24", "10.112.45.254", 7, 1, false);
+        var persistent = Route("10.112.21.0/24", "10.112.45.254", 0, 1, true) with { IsActive = false };
+        var service = new IPv4RouteManagementService(
+            new RecordingPowerShellExecutor(),
+            new StubRouteTableService([persistent]),
+            new StubNetworkAdapterService([Adapter(7)]));
+
+        var result = await service.UpdateAsync(
+            existing,
+            new("10.112.21.0/24", "10.112.45.254", 7, 1, true));
+
+        result.VerifiedRoute.Should().Be(persistent);
     }
 
     [Fact]
@@ -47,12 +65,44 @@ public sealed class IPv4RouteManagementServiceTests
         var existing = Route("10.20.0.0/16", "192.168.1.1", 7, 10, false);
         var service = new IPv4RouteManagementService(
             new RecordingPowerShellExecutor(),
-            new StubRouteTableService([existing]));
+            new StubRouteTableService([existing]),
+            new StubNetworkAdapterService([Adapter(7)]));
 
         var action = () => service.DeleteAsync(existing);
 
         await action.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("*重新读取*仍然存在*");
+    }
+
+    [Fact]
+    public async Task 新增路由_接口索引不存在_应在执行PowerShell前拒绝()
+    {
+        var executor = new RecordingPowerShellExecutor();
+        var service = new IPv4RouteManagementService(
+            executor,
+            new StubRouteTableService([]),
+            new StubNetworkAdapterService([Adapter(9)]));
+
+        var action = () => service.CreateAsync(new("198.51.100.0/24", "", 999, 10, false));
+
+        await action.Should().ThrowAsync<ArgumentException>().WithMessage("*接口索引 999 不存在*");
+        executor.Command.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task 修改系统路由_不应按管理来源阻止()
+    {
+        var systemRoute = Route("224.0.0.0/4", "0.0.0.0", 7, 256, false) with { IsUserOperable = false };
+        var changed = systemRoute with { RouteMetric = 300 };
+        var executor = new RecordingPowerShellExecutor();
+        var service = new IPv4RouteManagementService(
+            executor,
+            new StubRouteTableService([changed]),
+            new StubNetworkAdapterService([Adapter(7)]));
+
+        await service.UpdateAsync(systemRoute, new("224.0.0.0/4", "", 7, 300, false));
+
+        executor.Command.Should().Contain("Remove-NetRoute");
     }
 
     private static RouteInfo Route(
@@ -63,6 +113,11 @@ public sealed class IPv4RouteManagementServiceTests
         bool persistent) => new(
         RouteAddressFamily.IPv4, prefix, nextHop, "Ethernet", interfaceIndex,
         metric, 25, "NetMgmt", persistent, true);
+
+    private static NetworkAdapterInfo Adapter(int index) => new(
+        "Ethernet", "Adapter", index, "Up", "00-00-00-00-00-00", "1 Gbps",
+        NetworkAdapterKind.Physical, ["192.168.1.10/24"], [], ["1.1.1.1"], ["192.168.1.1"],
+        25, false, 25, false);
 
     private sealed class StubRouteTableService(IReadOnlyList<RouteInfo> routes) : IRouteTableService
     {
@@ -87,5 +142,12 @@ public sealed class IPv4RouteManagementServiceTests
                 PropertyNameCaseInsensitive = true
             })!);
         }
+    }
+
+    private sealed class StubNetworkAdapterService(IReadOnlyList<NetworkAdapterInfo> adapters)
+        : INetworkAdapterService
+    {
+        public Task<IReadOnlyList<NetworkAdapterInfo>> GetAdaptersAsync(CancellationToken cancellationToken = default) =>
+            Task.FromResult(adapters);
     }
 }

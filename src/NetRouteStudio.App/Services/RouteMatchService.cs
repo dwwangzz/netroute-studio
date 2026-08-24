@@ -65,7 +65,7 @@ public sealed class RouteMatchService(
     {
         var normalizedTarget = target.ToString();
         var candidates = routes
-            .Where(route => IsSameFamily(route, target.AddressFamily))
+            .Where(route => route.IsActive && IsSameFamily(route, target.AddressFamily))
             .Select(route => TryCreateCandidate(route, target))
             .Where(candidate => candidate is not null)
             .Cast<RouteCandidate>()

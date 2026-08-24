@@ -46,6 +46,18 @@ public sealed class RouteMatchServiceTests
         result.MatchedRoute!.DestinationPrefix.Should().Be("2001:db8::/32");
     }
 
+    [Fact]
+    public async Task 匹配路由_永久但未生效的路由不应成为候选()
+    {
+        var active = Route("0.0.0.0/0", 10, 10);
+        var inactive = Route("8.8.8.0/24", 1, 1) with { IsActive = false, IsPersistent = true };
+        var service = CreateService([active, inactive], "0.0.0.0/0", "Ethernet", 7);
+
+        var result = await service.MatchAsync("8.8.8.8");
+
+        result.Candidates.Should().ContainSingle().Which.Route.Should().Be(active);
+    }
+
     [Theory]
     [InlineData("")]
     [InlineData("not-an-ip")]

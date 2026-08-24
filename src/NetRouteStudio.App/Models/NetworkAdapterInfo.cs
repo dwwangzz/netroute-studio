@@ -32,6 +32,9 @@ public sealed record NetworkAdapterInfo(
 
     public string GatewayDisplay => JoinOrEmpty(Gateways);
 
+    public string SelectionDisplay =>
+        $"{Name}｜索引 {InterfaceIndex}｜{(IPv4Addresses.Count > 0 ? IPv4Addresses[0] : "无 IPv4")}｜{Status}";
+
     public string IPv4MetricDisplay => FormatMetric(IPv4InterfaceMetric, IPv4AutomaticMetric);
 
     public string IPv6MetricDisplay => FormatMetric(IPv6InterfaceMetric, IPv6AutomaticMetric);
