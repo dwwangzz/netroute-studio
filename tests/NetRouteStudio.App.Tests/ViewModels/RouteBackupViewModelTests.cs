@@ -45,6 +45,14 @@ public sealed class RouteBackupViewModelTests
         confirmation.Request!.Command.Should().Contain("DELETE ROUTE");
         extra.DifferenceKind.Should().Be(RouteRestoreDifferenceKind.Deleted);
         extra.IsSelected.Should().BeFalse();
+
+        var identical = viewModel.RestoreItems.Single(item => item.DestinationPrefix == missing.DestinationPrefix);
+        identical.IsSelected = true;
+        await viewModel.RestoreSelectedCommand.ExecuteAsync(null);
+
+        viewModel.ErrorMessage.Should().Contain("完全一致").And.Contain("不能执行");
+        management.CreateCount.Should().Be(1);
+        management.DeleteCount.Should().Be(1);
     }
 
     private static RouteInfo Route(string prefix) => new(

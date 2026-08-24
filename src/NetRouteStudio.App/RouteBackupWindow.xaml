@@ -96,7 +96,9 @@
                             <DataGridTemplateColumn Header="执行" Width="55">
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
-                                        <CheckBox IsChecked="{Binding IsSelected}" IsEnabled="{Binding CanRestore}" HorizontalAlignment="Center" />
+                                        <CheckBox IsChecked="{Binding IsSelected, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                  IsEnabled="{Binding CanRestore}" HorizontalAlignment="Center"
+                                                  Click="OnRestoreSelectionChanged" />
                                     </DataTemplate>
                                 </DataGridTemplateColumn.CellTemplate>
                             </DataGridTemplateColumn>

@@ -51,10 +51,24 @@ public sealed class RouteRestoreComparisonService : IRouteRestoreComparisonServi
         }
 
         return result
-            .OrderBy(item => item.DifferenceKind)
+            .OrderBy(item => GetDifferencePriority(item.DifferenceKind))
+            .ThenByDescending(item => item.IsSelected)
+            .ThenBy(item => (item.BackupRoute ?? item.CurrentRoute)?.IsUserOperable == false ? 1 : 0)
             .ThenBy(item => item.DestinationPrefix, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(item => item.NextHop, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(item => (item.BackupRoute ?? item.CurrentRoute)?.InterfaceIndex ?? int.MaxValue)
             .ToArray();
     }
+
+    private static int GetDifferencePriority(RouteRestoreDifferenceKind differenceKind) => differenceKind switch
+    {
+        RouteRestoreDifferenceKind.Missing => 0,
+        RouteRestoreDifferenceKind.Changed => 1,
+        RouteRestoreDifferenceKind.CurrentOnly => 2,
+        RouteRestoreDifferenceKind.Same => 3,
+        RouteRestoreDifferenceKind.Deleted => 4,
+        _ => int.MaxValue
+    };
 
     private static NetworkAdapterInfo? MatchAdapter(
         RouteInfo route,

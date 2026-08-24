@@ -50,6 +50,27 @@ public sealed class RouteRestoreComparisonServiceTests
     }
 
     [Fact]
+    public void 差异列表_所有有变动项目应排在完全一致之前()
+    {
+        var adapter = Adapter(7, "Ethernet");
+        var missing = Route("10.3.0.0/16", 7, 10, false);
+        var changed = Route("10.2.0.0/16", 7, 10, false);
+        var same = Route("10.1.0.0/16", 7, 10, false);
+        var currentOnly = Route("10.4.0.0/16", 7, 10, false);
+
+        var result = new RouteRestoreComparisonService().Compare(
+            Document([same, changed, missing], [adapter]),
+            [same, changed with { RouteMetric = 20 }, currentOnly],
+            [adapter]);
+
+        result.Select(item => item.DifferenceKind).Should().Equal(
+            RouteRestoreDifferenceKind.Missing,
+            RouteRestoreDifferenceKind.Changed,
+            RouteRestoreDifferenceKind.CurrentOnly,
+            RouteRestoreDifferenceKind.Same);
+    }
+
+    [Fact]
     public void 原接口索引变化但名称相同_应匹配当前网卡()
     {
         var backupAdapter = Adapter(7, "Ethernet");

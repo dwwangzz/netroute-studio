@@ -110,10 +110,17 @@ public sealed partial class RouteBackupViewModel(
     [RelayCommand]
     private async Task RestoreSelectedAsync()
     {
-        var selected = RestoreItems.Where(item => item.IsSelected && item.CanRestore).ToArray();
+        var selected = RestoreItems.Where(item => item.IsSelected).ToArray();
         if (selected.Length == 0)
         {
             ErrorMessage = "请至少勾选一条缺失、配置不同或仅当前存在的路由。";
+            return;
+        }
+
+        var invalid = selected.FirstOrDefault(item => !item.CanRestore);
+        if (invalid is not null)
+        {
+            ErrorMessage = $"路由 {invalid.DestinationPrefix} 当前状态为“{invalid.DifferenceDisplay}”，不能执行差异操作。";
             return;
         }
 
