@@ -121,6 +121,21 @@ public sealed class RouteMatchServiceTests
         executor.Commands.Should().Contain(command => command.Contains("Resolve-DnsName", StringComparison.Ordinal));
     }
 
+    [Fact]
+    public async Task Windows原生路由不可用_应保留程序计算结果和错误原因()
+    {
+        var route = Route("0.0.0.0/0", 1, 10);
+        var service = new RouteMatchService(new StubRouteTableService([route]), new ThrowingPowerShellExecutor());
+
+        var result = await service.MatchAsync("203.0.113.10");
+
+        result.MatchedRoute.Should().Be(route);
+        result.NativeRoute.IsAvailable.Should().BeFalse();
+        result.NativeRoute.ErrorMessage.Should().Contain("模拟无可用原生路由");
+        result.IsNativeMatch.Should().BeFalse();
+        result.DecisionReason.Should().Contain("原生路由查询不可用");
+    }
+
     [Theory]
     [InlineData("bad domain")]
     [InlineData("example.com; Get-Process")]
@@ -196,5 +211,11 @@ public sealed class RouteMatchServiceTests
                 PropertyNameCaseInsensitive = true
             })!);
         }
+    }
+
+    private sealed class ThrowingPowerShellExecutor : IPowerShellExecutor
+    {
+        public Task<T> ExecuteAsync<T>(string command, TimeSpan timeout, CancellationToken cancellationToken = default) =>
+            throw new InvalidOperationException("模拟无可用原生路由");
     }
 }

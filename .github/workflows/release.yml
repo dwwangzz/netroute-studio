@@ -17,6 +17,8 @@ on:
         required: true
         default: false
         type: boolean
+  schedule:
+    - cron: '0 2 * * 1'
 
 jobs:
   build:
@@ -74,8 +76,8 @@ jobs:
           -p:InformationalVersion=${{ steps.version.outputs.assembly_version }}
           -p:IncludeSourceRevisionInInformationalVersion=false
 
-      - name: 运行全部测试
-        run: dotnet test NetRouteStudio.sln --configuration Release --no-build --maxcpucount:1
+      - name: 运行稳定测试
+        run: dotnet test NetRouteStudio.sln --configuration Release --no-build --maxcpucount:1 --filter "Category!=Integration"
 
       - name: 发布自包含程序
         run: >-
@@ -131,3 +133,28 @@ jobs:
           files: |
             artifacts/${{ needs.build.outputs.package_name }}.zip
             artifacts/${{ needs.build.outputs.package_name }}.zip.sha256
+
+  integration-tests:
+    name: 真实 Windows 网络集成测试（非阻断）
+    if: github.event_name == 'workflow_dispatch' || github.event_name == 'schedule'
+    continue-on-error: true
+    runs-on: windows-latest
+    permissions:
+      contents: read
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 安装 .NET 8 SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: 恢复依赖
+        run: dotnet restore NetRouteStudio.sln --configfile NuGet.Config --disable-parallel
+
+      - name: 构建集成测试
+        run: dotnet build NetRouteStudio.sln --configuration Release --no-restore --maxcpucount:1
+
+      - name: 运行真实网络集成测试
+        run: dotnet test NetRouteStudio.sln --configuration Release --no-build --maxcpucount:1 --filter "Category=Integration"

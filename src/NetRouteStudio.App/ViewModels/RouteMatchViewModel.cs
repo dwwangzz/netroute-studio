@@ -74,7 +74,9 @@ public sealed partial class RouteMatchViewModel(IRouteMatchService routeMatchSer
         MatchedRoute = value.MatchedRoute;
         NativeRoute = value.NativeRoute;
         DecisionReason = value.DecisionReason;
-        VerificationMessage = value.IsNativeMatch
+        VerificationMessage = !value.NativeRoute.IsAvailable
+            ? $"Windows 原生查询不可用：{value.NativeRoute.ErrorMessage}"
+            : value.IsNativeMatch
             ? "程序计算结果与 Windows 原生查询一致"
             : "程序计算结果与 Windows 原生查询不一致，请检查路由表变化";
     }

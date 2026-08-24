@@ -6,4 +6,9 @@ public sealed record NativeRouteMatch(
     string InterfaceAlias,
     int InterfaceIndex,
     int RouteMetric,
-    int InterfaceMetric);
+    int InterfaceMetric)
+{
+    public bool IsAvailable { get; init; } = true;
+
+    public string ErrorMessage { get; init; } = string.Empty;
+}

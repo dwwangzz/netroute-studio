@@ -77,7 +77,7 @@ public sealed class RouteMatchService(
 
         var matchedRoute = candidates.FirstOrDefault()?.Route;
         var nativeRoute = await QueryNativeRouteAsync(normalizedTarget, cancellationToken);
-        var isNativeMatch = matchedRoute is not null &&
+        var isNativeMatch = nativeRoute.IsAvailable && matchedRoute is not null &&
             string.Equals(matchedRoute.DestinationPrefix, nativeRoute.DestinationPrefix, StringComparison.OrdinalIgnoreCase) &&
             matchedRoute.InterfaceIndex == nativeRoute.InterfaceIndex;
 
@@ -86,6 +86,10 @@ public sealed class RouteMatchService(
             : $"在 {candidates.Length} 条候选路由中选择最长前缀 /{candidates[0].PrefixLength}；" +
               $"同前缀下按路由跃点 {matchedRoute.RouteMetric} + 接口跃点 {matchedRoute.InterfaceMetric}，" +
               $"综合跃点 {matchedRoute.EffectiveMetric} 最小者命中。";
+        if (!nativeRoute.IsAvailable)
+        {
+            decisionReason += $" Windows 原生路由查询不可用：{nativeRoute.ErrorMessage}";
+        }
 
         return new RouteMatchResult(
             normalizedTarget,
@@ -167,10 +171,26 @@ public sealed class RouteMatchService(
             }
             """;
 
-        var data = await powerShellExecutor.ExecuteAsync<NativeRouteData>(
-            command,
-            NativeQueryTimeout,
-            cancellationToken);
+        NativeRouteData data;
+        try
+        {
+            data = await powerShellExecutor.ExecuteAsync<NativeRouteData>(
+                command,
+                NativeQueryTimeout,
+                cancellationToken);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception exception)
+        {
+            return new NativeRouteMatch("不可用", "—", "—", 0, 0, 0)
+            {
+                IsAvailable = false,
+                ErrorMessage = exception.Message
+            };
+        }
         return new NativeRouteMatch(
             data.DestinationPrefix,
             data.NextHop,
