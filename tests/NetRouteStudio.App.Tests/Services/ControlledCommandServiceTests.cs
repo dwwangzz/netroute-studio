@@ -7,6 +7,13 @@ public sealed class ControlledCommandServiceTests
 {
     private readonly ControlledCommandService _service = new();
 
+    [Fact]
+    public void 所有界面示例_都应通过同一套白名单校验()
+    {
+        _service.Examples.Should().NotBeEmpty();
+        foreach (var example in _service.Examples) _service.Parse(example.Command).Should().NotBeNull();
+    }
+
     [Theory]
     [InlineData("ping -n 2 example.com", "ping.exe")]
     [InlineData("tracert -d 192.0.2.1", "tracert.exe")]
@@ -26,6 +33,8 @@ public sealed class ControlledCommandServiceTests
     [InlineData("route add 10.0.0.0 mask 255.0.0.0 1.1.1.1")]
     [InlineData("arp -d *")]
     [InlineData("ipconfig /flushdns")]
+    [InlineData("netsh interface ipv4 set address name=ETH static 1.1.1.1 255.255.255.0")]
+    [InlineData("nbtstat -R")]
     public void 非白名单或危险参数_应拒绝(string input) =>
         _service.Invoking(service => service.Parse(input)).Should().Throw<ArgumentException>();
 

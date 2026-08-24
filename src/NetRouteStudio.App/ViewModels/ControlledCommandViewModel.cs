@@ -13,6 +13,9 @@ public sealed partial class ControlledCommandViewModel(IControlledCommandService
     [ObservableProperty] private string _errorMessage = string.Empty;
     [ObservableProperty] private bool _isRunning;
     public ObservableCollection<ControlledCommandResult> History { get; } = [];
+    public IReadOnlyList<ControlledCommandExample> Examples { get; } = service.Examples;
+    [ObservableProperty] private ControlledCommandExample? _selectedExample;
+    [RelayCommand] private void FillExample() { if (SelectedExample is not null) { CommandText = SelectedExample.Command; StatusMessage = $"已填入：{SelectedExample.Description}。确认参数后点击执行。"; } }
     [RelayCommand] private async Task ExecuteAsync()
     {
         if (IsRunning) return;
