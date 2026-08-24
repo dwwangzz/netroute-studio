@@ -9,7 +9,7 @@ namespace NetRouteStudio.App.Tests.ViewModels;
 public sealed class RouteBackupViewModelTests
 {
     [Fact]
-    public async Task 选择性恢复_应只新增选中缺失路由且不删除当前额外路由()
+    public async Task 选择性执行_默认不删除额外路由但手动勾选后应删除()
     {
         var adapter = Adapter();
         var missing = Route("10.1.0.0/16");
@@ -36,6 +36,15 @@ public sealed class RouteBackupViewModelTests
             .DifferenceKind.Should().Be(RouteRestoreDifferenceKind.Same);
         viewModel.RestoreItems.Single(item => item.DestinationPrefix == currentOnly.DestinationPrefix)
             .DifferenceKind.Should().Be(RouteRestoreDifferenceKind.CurrentOnly);
+
+        var extra = viewModel.RestoreItems.Single(item => item.DestinationPrefix == currentOnly.DestinationPrefix);
+        extra.IsSelected = true;
+        await viewModel.RestoreSelectedCommand.ExecuteAsync(null);
+
+        management.DeleteCount.Should().Be(1);
+        confirmation.Request!.Command.Should().Contain("DELETE ROUTE");
+        extra.DifferenceKind.Should().Be(RouteRestoreDifferenceKind.Deleted);
+        extra.IsSelected.Should().BeFalse();
     }
 
     private static RouteInfo Route(string prefix) => new(

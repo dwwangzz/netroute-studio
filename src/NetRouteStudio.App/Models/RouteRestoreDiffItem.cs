@@ -16,15 +16,22 @@ public sealed partial class RouteRestoreDiffItem : ObservableObject
         RouteRestoreDifferenceKind.Missing => "当前缺失",
         RouteRestoreDifferenceKind.Changed => "配置不同",
         RouteRestoreDifferenceKind.Same => "完全一致",
-        _ => "仅当前存在（忽略）"
+        RouteRestoreDifferenceKind.CurrentOnly => "仅当前存在",
+        _ => "已删除"
     };
 
-    public string RiskDisplay => BackupRoute is { IsUserOperable: false }
-        ? "系统路由｜手动确认"
-        : BackupRoute is null ? "不会删除" : "用户路由";
+    public string RiskDisplay => (BackupRoute ?? CurrentRoute) is { IsUserOperable: false }
+        ? BackupRoute is null ? "系统路由｜手动删除" : "系统路由｜手动确认"
+        : BackupRoute is null ? "当前额外路由｜手动删除" : "用户路由";
 
-    public bool CanRestore => BackupRoute is not null &&
-                              DifferenceKind is RouteRestoreDifferenceKind.Missing or RouteRestoreDifferenceKind.Changed;
+    public bool CanRestore => DifferenceKind switch
+    {
+        RouteRestoreDifferenceKind.Missing or RouteRestoreDifferenceKind.Changed => BackupRoute is not null,
+        RouteRestoreDifferenceKind.CurrentOnly => CurrentRoute is not null,
+        _ => false
+    };
+
+    public bool CanSelectAdapter => DifferenceKind is RouteRestoreDifferenceKind.Missing or RouteRestoreDifferenceKind.Changed;
 
     public string DestinationPrefix => BackupRoute?.DestinationPrefix ?? CurrentRoute?.DestinationPrefix ?? "—";
 
@@ -42,6 +49,7 @@ public sealed partial class RouteRestoreDiffItem : ObservableObject
     {
         OnPropertyChanged(nameof(DifferenceDisplay));
         OnPropertyChanged(nameof(CanRestore));
+        OnPropertyChanged(nameof(CanSelectAdapter));
     }
 
     partial void OnCurrentRouteChanged(RouteInfo? value)

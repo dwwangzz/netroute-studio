@@ -92,9 +92,14 @@ public sealed class RouteRestoreComparisonService : IRouteRestoreComparisonServi
     private static bool IsEquivalent(
         RouteInfo backupRoute,
         RouteInfo currentRoute,
-        NetworkAdapterInfo? adapter) =>
-        adapter is not null &&
-        currentRoute.InterfaceIndex == adapter.InterfaceIndex &&
+        NetworkAdapterInfo? adapter)
+    {
+        var interfaceMatches = adapter is not null
+            ? currentRoute.InterfaceIndex == adapter.InterfaceIndex
+            : currentRoute.InterfaceIndex == backupRoute.InterfaceIndex &&
+              currentRoute.InterfaceAlias.Equals(backupRoute.InterfaceAlias, StringComparison.OrdinalIgnoreCase);
+        return interfaceMatches &&
         currentRoute.RouteMetric == backupRoute.RouteMetric &&
         currentRoute.IsPersistent == backupRoute.IsPersistent;
+    }
 }

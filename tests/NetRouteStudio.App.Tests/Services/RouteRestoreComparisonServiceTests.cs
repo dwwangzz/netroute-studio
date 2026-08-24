@@ -29,6 +29,24 @@ public sealed class RouteRestoreComparisonServiceTests
         var extra = result.Single(item => item.DestinationPrefix == currentOnly.DestinationPrefix);
         extra.DifferenceKind.Should().Be(RouteRestoreDifferenceKind.CurrentOnly);
         extra.IsSelected.Should().BeFalse();
+        extra.CanRestore.Should().BeTrue();
+    }
+
+    [Fact]
+    public void 特殊接口不在网卡列表但路由字段相同_应判定完全一致()
+    {
+        var loopback = new RouteInfo(
+            RouteAddressFamily.IPv4, "127.0.0.0/8", "0.0.0.0",
+            "Loopback Pseudo-Interface 1", 1, 256, 75, "Local", false, false);
+        var persistent = new RouteInfo(
+            RouteAddressFamily.IPv4, "192.168.41.0/24", "192.168.47.60",
+            "未绑定（选择接口后生效）", 0, 1, 0, string.Empty, true, false)
+            with { IsActive = false };
+
+        var result = new RouteRestoreComparisonService().Compare(
+            Document([loopback, persistent], []), [loopback, persistent], []);
+
+        result.Should().OnlyContain(item => item.DifferenceKind == RouteRestoreDifferenceKind.Same);
     }
 
     [Fact]

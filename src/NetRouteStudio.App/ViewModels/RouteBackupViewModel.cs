@@ -103,7 +103,7 @@ public sealed partial class RouteBackupViewModel(
 
             var actionable = RestoreItems.Count(item => item.CanRestore);
             var selected = RestoreItems.Count(item => item.IsSelected);
-            StatusMessage = $"差异比较完成：可恢复 {actionable} 条，默认选中 {selected} 条；当前额外路由不会删除。";
+            StatusMessage = $"差异比较完成：可执行 {actionable} 条，默认选中 {selected} 条；当前额外路由仅在手动勾选后删除。";
         }, "比较当前 IPv4 路由失败");
     }
 
@@ -113,7 +113,7 @@ public sealed partial class RouteBackupViewModel(
         var selected = RestoreItems.Where(item => item.IsSelected && item.CanRestore).ToArray();
         if (selected.Length == 0)
         {
-            ErrorMessage = "请至少勾选一条缺失或配置不同的备份路由。";
+            ErrorMessage = "请至少勾选一条缺失、配置不同或仅当前存在的路由。";
             return;
         }
 
@@ -143,7 +143,7 @@ public sealed partial class RouteBackupViewModel(
             }
 
             var succeeded = results.Count(result => result.Succeeded);
-            StatusMessage = $"选择性恢复完成：成功 {succeeded} 条，失败 {results.Count - succeeded} 条；未删除任何额外路由。";
+            StatusMessage = $"选中差异执行完成：成功 {succeeded} 条，失败 {results.Count - succeeded} 条。";
             if (succeeded != results.Count)
             {
                 ErrorMessage = "部分路由恢复失败，请查看逐条执行结果。";
@@ -216,20 +216,23 @@ public sealed partial class RouteBackupViewModel(
         for (var index = 0; index < items.Count; index++)
         {
             var item = items[index];
-            var request = BuildRestoreRequest(item);
-            var operation = item.CurrentRoute is null ? "新增恢复" : "修改恢复";
+            var isDelete = item.DifferenceKind == RouteRestoreDifferenceKind.CurrentOnly;
+            var request = isDelete ? null : BuildRestoreRequest(item);
+            var operation = isDelete ? "删除当前额外路由" : item.CurrentRoute is null ? "新增恢复" : "修改恢复";
             var prefix = $"[{index + 1} {operation}] ";
             fields.AddRange(BuildRestoreFields(item, request)
                 .Select(field => field with { Name = prefix + field.Name }));
-            var command = item.CurrentRoute is null
-                ? routeManagementService.GetCreateCommand(request)
-                : routeManagementService.GetUpdateCommand(item.CurrentRoute, request);
-            commands.Add($"# {prefix}{request.DestinationPrefix}\n{command.Trim()}");
+            var command = isDelete
+                ? routeManagementService.GetDeleteCommand(item.CurrentRoute!)
+                : item.CurrentRoute is null
+                    ? routeManagementService.GetCreateCommand(request!)
+                    : routeManagementService.GetUpdateCommand(item.CurrentRoute, request!);
+            commands.Add($"# {prefix}{item.DestinationPrefix}\n{command.Trim()}");
         }
 
         return new RouteConfirmationRequest(
-            "确认选择性恢复 IPv4 路由",
-            $"选择性恢复 IPv4 路由（共 {items.Count} 条）",
+            "确认执行选中的 IPv4 路由差异",
+            $"执行选中的 IPv4 路由差异（共 {items.Count} 条）",
             fields,
             string.Join("\n\n", commands));
     }
@@ -251,47 +254,73 @@ public sealed partial class RouteBackupViewModel(
         RouteRestoreDiffItem item,
         ICollection<BatchRouteExecutionResult> results)
     {
-        var prefix = item.BackupRoute?.DestinationPrefix ?? "—";
+        var prefix = item.DestinationPrefix;
         try
         {
-            var request = BuildRestoreRequest(item);
             RouteMutationResult result;
             BatchRouteOperation operation;
-            if (item.CurrentRoute is null)
+            if (item.DifferenceKind == RouteRestoreDifferenceKind.CurrentOnly)
+            {
+                operation = BatchRouteOperation.Delete;
+                result = await routeManagementService.DeleteAsync(item.CurrentRoute!);
+                item.DifferenceKind = RouteRestoreDifferenceKind.Deleted;
+            }
+            else if (item.CurrentRoute is null)
             {
                 operation = BatchRouteOperation.Create;
+                var request = BuildRestoreRequest(item);
                 result = await routeManagementService.CreateAsync(request);
+                item.CurrentRoute = result.VerifiedRoute;
+                item.DifferenceKind = RouteRestoreDifferenceKind.Same;
             }
             else
             {
                 operation = BatchRouteOperation.Update;
+                var request = BuildRestoreRequest(item);
                 result = await routeManagementService.UpdateAsync(item.CurrentRoute, request);
+                item.CurrentRoute = result.VerifiedRoute;
+                item.DifferenceKind = RouteRestoreDifferenceKind.Same;
             }
 
-            item.CurrentRoute = result.VerifiedRoute;
-            item.DifferenceKind = RouteRestoreDifferenceKind.Same;
             item.IsSelected = false;
             results.Add(new BatchRouteExecutionResult(operation, prefix, true, result.Message));
         }
         catch (Exception exception)
         {
             logger.LogError(exception, "恢复 IPv4 路由失败：{DestinationPrefix}", prefix);
-            var operation = item.CurrentRoute is null ? BatchRouteOperation.Create : BatchRouteOperation.Update;
+            var operation = item.DifferenceKind == RouteRestoreDifferenceKind.CurrentOnly
+                ? BatchRouteOperation.Delete
+                : item.CurrentRoute is null ? BatchRouteOperation.Create : BatchRouteOperation.Update;
             results.Add(new BatchRouteExecutionResult(operation, prefix, false, exception.Message));
         }
     }
 
     private static IReadOnlyList<RouteConfirmationField> BuildRestoreFields(
         RouteRestoreDiffItem item,
-        IPv4RouteRequest request)
+        IPv4RouteRequest? request)
     {
         var before = item.CurrentRoute;
-        var backup = item.BackupRoute!;
         const string empty = "—";
+        if (item.DifferenceKind == RouteRestoreDifferenceKind.CurrentOnly)
+        {
+            return
+            [
+                new("风险属性", before?.OperabilityDisplay ?? empty, "明确删除当前额外路由"),
+                new("目标网络", before?.DestinationPrefix ?? empty, empty),
+                new("下一跳", before?.NextHop ?? empty, empty),
+                new("网络接口", before?.InterfaceAlias ?? empty, empty),
+                new("接口索引", before?.InterfaceIndex.ToString() ?? empty, empty),
+                new("路由 Metric", before?.RouteMetric.ToString() ?? empty, empty),
+                new("保存方式", before?.LifetimeDisplay ?? empty, empty),
+                new("协议/来源", before?.Protocol ?? empty, empty)
+            ];
+        }
+
+        var backup = item.BackupRoute!;
         return
         [
             new("风险属性", before?.OperabilityDisplay ?? empty, item.RiskDisplay),
-            new("目标网络", before?.DestinationPrefix ?? empty, request.DestinationPrefix),
+            new("目标网络", before?.DestinationPrefix ?? empty, request!.DestinationPrefix),
             new("下一跳", before?.NextHop ?? empty, request.NextHop),
             new("网络接口", before?.InterfaceAlias ?? empty, item.SelectedAdapter?.Name ?? empty),
             new("接口索引", before?.InterfaceIndex.ToString() ?? empty, request.InterfaceIndex.ToString()),
