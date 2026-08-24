@@ -1,5 +1,7 @@
+using System.Globalization;
 using System.Net;
 using System.Net.Sockets;
+using System.Text.RegularExpressions;
 using NetRouteStudio.App.Infrastructure.PowerShell;
 using NetRouteStudio.App.Models;
 
@@ -10,6 +12,38 @@ public sealed class RouteMatchService(
     IPowerShellExecutor powerShellExecutor) : IRouteMatchService
 {
     private static readonly TimeSpan NativeQueryTimeout = TimeSpan.FromSeconds(15);
+    private static readonly TimeSpan DnsQueryTimeout = TimeSpan.FromSeconds(15);
+    private static readonly Regex DnsLabelPattern = new(
+        "^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$",
+        RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+
+    public async Task<RouteInputMatchResult> MatchInputAsync(
+        string input,
+        CancellationToken cancellationToken = default)
+    {
+        var trimmedInput = input?.Trim() ?? string.Empty;
+        if (IPAddress.TryParse(trimmedInput, out var address) && !trimmedInput.Contains('/'))
+        {
+            var match = await MatchAsync(address.ToString(), cancellationToken);
+            return new RouteInputMatchResult(trimmedInput, false, [match]);
+        }
+
+        var domain = NormalizeDomain(trimmedInput);
+        var addresses = await ResolveDomainAsync(domain, cancellationToken);
+        if (addresses.Count == 0)
+        {
+            throw new InvalidOperationException($"域名 {domain} 没有可用的 A 或 AAAA 记录。");
+        }
+
+        var routes = await routeTableService.GetRoutesAsync(cancellationToken);
+        var matches = new List<RouteMatchResult>(addresses.Count);
+        foreach (var resolvedAddress in addresses)
+        {
+            matches.Add(await MatchResolvedAddressAsync(resolvedAddress, routes, cancellationToken));
+        }
+
+        return new RouteInputMatchResult(domain, true, matches);
+    }
 
     public async Task<RouteMatchResult> MatchAsync(
         string targetAddress,
@@ -20,8 +54,16 @@ public sealed class RouteMatchService(
             throw new ArgumentException("请输入有效的 IPv4 或 IPv6 地址。", nameof(targetAddress));
         }
 
-        var normalizedTarget = target.ToString();
         var routes = await routeTableService.GetRoutesAsync(cancellationToken);
+        return await MatchResolvedAddressAsync(target, routes, cancellationToken);
+    }
+
+    private async Task<RouteMatchResult> MatchResolvedAddressAsync(
+        IPAddress target,
+        IReadOnlyList<RouteInfo> routes,
+        CancellationToken cancellationToken)
+    {
+        var normalizedTarget = target.ToString();
         var candidates = routes
             .Where(route => IsSameFamily(route, target.AddressFamily))
             .Select(route => TryCreateCandidate(route, target))
@@ -52,6 +94,60 @@ public sealed class RouteMatchService(
             nativeRoute,
             isNativeMatch,
             decisionReason);
+    }
+
+    private async Task<IReadOnlyList<IPAddress>> ResolveDomainAsync(
+        string domain,
+        CancellationToken cancellationToken)
+    {
+        var command = $$"""
+            $records = @(
+                Resolve-DnsName -Name '{{domain}}' -Type A -DnsOnly -ErrorAction SilentlyContinue
+                Resolve-DnsName -Name '{{domain}}' -Type AAAA -DnsOnly -ErrorAction SilentlyContinue
+            )
+            $addresses = @($records | Where-Object { -not [string]::IsNullOrWhiteSpace($_.IPAddress) } |
+                ForEach-Object { [string]$_.IPAddress } | Sort-Object -Unique)
+            [pscustomobject]@{ Items = $addresses }
+            """;
+
+        var result = await powerShellExecutor.ExecuteAsync<DnsAddressEnvelope>(
+            command,
+            DnsQueryTimeout,
+            cancellationToken);
+        return result.Items
+            .Select(value => IPAddress.TryParse(value, out var parsed) ? parsed : null)
+            .Where(address => address is not null)
+            .Cast<IPAddress>()
+            .Distinct()
+            .OrderBy(address => address.AddressFamily == AddressFamily.InterNetwork ? 0 : 1)
+            .ThenBy(address => address.ToString(), StringComparer.Ordinal)
+            .ToArray();
+    }
+
+    private static string NormalizeDomain(string input)
+    {
+        if (string.IsNullOrWhiteSpace(input) || input.Length > 253 || input.Contains('/'))
+        {
+            throw new ArgumentException("请输入有效的 IP 地址或域名。", nameof(input));
+        }
+
+        string asciiDomain;
+        try
+        {
+            asciiDomain = new IdnMapping().GetAscii(input.TrimEnd('.')).ToLowerInvariant();
+        }
+        catch (ArgumentException exception)
+        {
+            throw new ArgumentException("域名格式无效。", nameof(input), exception);
+        }
+
+        var labels = asciiDomain.Split('.');
+        if (labels.Length == 0 || labels.Any(label => !DnsLabelPattern.IsMatch(label)))
+        {
+            throw new ArgumentException("域名格式无效。", nameof(input));
+        }
+
+        return asciiDomain;
     }
 
     private async Task<NativeRouteMatch> QueryNativeRouteAsync(
@@ -143,5 +239,10 @@ public sealed class RouteMatchService(
         public int InterfaceIndex { get; init; }
         public int RouteMetric { get; init; }
         public int InterfaceMetric { get; init; }
+    }
+
+    private sealed class DnsAddressEnvelope
+    {
+        public string[] Items { get; init; } = [];
     }
 }

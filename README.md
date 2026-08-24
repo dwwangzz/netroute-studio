@@ -39,3 +39,5 @@ dotnet test NetRouteStudio.sln --no-build --maxcpucount:1
 第 4 模块“路由只读管理”：已验收。
 
 第 5 模块“路由匹配”：等待人工验收。
+
+第 5 模块补充：支持域名解析后的全部 IPv4/IPv6 地址匹配。

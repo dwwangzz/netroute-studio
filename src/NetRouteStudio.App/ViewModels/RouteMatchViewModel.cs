@@ -15,8 +15,10 @@ public sealed partial class RouteMatchViewModel(IRouteMatchService routeMatchSer
     [ObservableProperty] private string _verificationMessage = string.Empty;
     [ObservableProperty] private string _errorMessage = string.Empty;
     [ObservableProperty] private bool _isLoading;
+    [ObservableProperty] private RouteMatchResult? _selectedMatch;
 
     public ObservableCollection<RouteCandidate> Candidates { get; } = [];
+    public ObservableCollection<RouteMatchResult> ResolvedMatches { get; } = [];
 
     [RelayCommand]
     private async Task MatchAsync()
@@ -29,20 +31,16 @@ public sealed partial class RouteMatchViewModel(IRouteMatchService routeMatchSer
         IsLoading = true;
         ErrorMessage = string.Empty;
         Candidates.Clear();
+        ResolvedMatches.Clear();
         try
         {
-            var result = await routeMatchService.MatchAsync(TargetAddress);
-            foreach (var candidate in result.Candidates)
+            var result = await routeMatchService.MatchInputAsync(TargetAddress);
+            foreach (var match in result.Matches)
             {
-                Candidates.Add(candidate);
+                ResolvedMatches.Add(match);
             }
 
-            MatchedRoute = result.MatchedRoute;
-            NativeRoute = result.NativeRoute;
-            DecisionReason = result.DecisionReason;
-            VerificationMessage = result.IsNativeMatch
-                ? "程序计算结果与 Windows 原生查询一致"
-                : "程序计算结果与 Windows 原生查询不一致，请检查路由表变化";
+            SelectedMatch = ResolvedMatches.FirstOrDefault();
         }
         catch (Exception exception)
         {
@@ -56,5 +54,28 @@ public sealed partial class RouteMatchViewModel(IRouteMatchService routeMatchSer
         {
             IsLoading = false;
         }
+    }
+
+    partial void OnSelectedMatchChanged(RouteMatchResult? value)
+    {
+        Candidates.Clear();
+        if (value is null)
+        {
+            MatchedRoute = null;
+            NativeRoute = null;
+            return;
+        }
+
+        foreach (var candidate in value.Candidates)
+        {
+            Candidates.Add(candidate);
+        }
+
+        MatchedRoute = value.MatchedRoute;
+        NativeRoute = value.NativeRoute;
+        DecisionReason = value.DecisionReason;
+        VerificationMessage = value.IsNativeMatch
+            ? "程序计算结果与 Windows 原生查询一致"
+            : "程序计算结果与 Windows 原生查询不一致，请检查路由表变化";
     }
 }

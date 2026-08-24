@@ -74,6 +74,56 @@ public sealed class RouteMatchServiceTests
         result.IsNativeMatch.Should().BeTrue();
     }
 
+    [Fact]
+    [Trait("Category", "Integration")]
+    public async Task 匹配真实域名_全部解析地址应完成路由匹配()
+    {
+        var executor = new PowerShellExecutor(new WindowsPowerShellProcessRunner());
+        var service = new RouteMatchService(new RouteTableService(executor), executor);
+
+        var result = await service.MatchInputAsync("example.com");
+
+        result.IsDomain.Should().BeTrue();
+        result.Matches.Should().NotBeEmpty();
+        result.Matches.Should().OnlyHaveUniqueItems(match => match.TargetAddress);
+        result.Matches.Should().OnlyContain(match => match.MatchedRoute != null && match.IsNativeMatch);
+    }
+
+    [Fact]
+    public async Task 匹配域名_应解析去重后的全部IPv4和IPv6地址()
+    {
+        RouteInfo[] routes =
+        [
+            Route("0.0.0.0/0", 1, 10),
+            new(RouteAddressFamily.IPv6, "::/0", "fe80::1", "WLAN", 9, 2, 20, "NetMgmt", false, true)
+        ];
+        var executor = new DomainStubPowerShellExecutor();
+        var service = new RouteMatchService(new StubRouteTableService(routes), executor);
+
+        var result = await service.MatchInputAsync("example.com");
+
+        result.IsDomain.Should().BeTrue();
+        result.Matches.Select(match => match.TargetAddress)
+            .Should().BeEquivalentTo(["203.0.113.10", "2001:db8::10"]);
+        result.Matches.Should().OnlyContain(match => match.MatchedRoute != null);
+        executor.Commands.Should().Contain(command => command.Contains("Resolve-DnsName", StringComparison.Ordinal));
+    }
+
+    [Theory]
+    [InlineData("bad domain")]
+    [InlineData("example.com; Get-Process")]
+    [InlineData("-example.com")]
+    public async Task 匹配非法域名_应在执行PowerShell前拒绝(string input)
+    {
+        var executor = new DomainStubPowerShellExecutor();
+        var service = new RouteMatchService(new StubRouteTableService([]), executor);
+
+        var action = () => service.MatchInputAsync(input);
+
+        await action.Should().ThrowAsync<ArgumentException>();
+        executor.Commands.Should().BeEmpty();
+    }
+
     private static RouteMatchService CreateService(
         IReadOnlyList<RouteInfo> routes,
         string nativePrefix,
@@ -114,5 +164,25 @@ public sealed class RouteMatchServiceTests
             {
                 PropertyNameCaseInsensitive = true
             })!);
+    }
+
+    private sealed class DomainStubPowerShellExecutor : IPowerShellExecutor
+    {
+        public List<string> Commands { get; } = [];
+
+        public Task<T> ExecuteAsync<T>(string command, TimeSpan timeout, CancellationToken cancellationToken = default)
+        {
+            Commands.Add(command);
+            object value = command.Contains("Resolve-DnsName", StringComparison.Ordinal)
+                ? new { Items = new[] { "203.0.113.10", "2001:db8::10", "203.0.113.10" } }
+                : command.Contains("203.0.113.10", StringComparison.Ordinal)
+                    ? new { DestinationPrefix = "0.0.0.0/0", NextHop = "192.168.1.1", InterfaceAlias = "Ethernet", InterfaceIndex = 7, RouteMetric = 1, InterfaceMetric = 10 }
+                    : new { DestinationPrefix = "::/0", NextHop = "fe80::1", InterfaceAlias = "WLAN", InterfaceIndex = 9, RouteMetric = 2, InterfaceMetric = 20 };
+            var json = JsonSerializer.Serialize(value);
+            return Task.FromResult(JsonSerializer.Deserialize<T>(json, new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true
+            })!);
+        }
     }
 }
