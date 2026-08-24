@@ -15,6 +15,18 @@ NetRoute Studio 是基于 .NET 8 与 WPF 开发的 Windows 可视化网络策略
 - 网络测试：DNS、Ping、路由命中及 Tracert 诊断。
 - 受控网络命令：白名单、参数校验、实时输出、取消、历史记录和 Telnet 端口测试。
 
+## 程序截图
+
+首页
+
+![首页](doc/imgs/首页.png)
+
+批量管理
+
+<img src="doc/imgs/批量管理.png" alt="批量管理"  />
+
+
+
 ## 运行要求
 
 - Windows 10 或 Windows 11 x64
