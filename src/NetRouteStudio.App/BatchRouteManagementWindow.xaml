@@ -47,7 +47,8 @@
             <DataGrid ItemsSource="{Binding Items}" AutoGenerateColumns="False" CanUserAddRows="False"
                       GridLinesVisibility="Horizontal" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
                 <DataGrid.Resources>
-                    <Style x:Key="EditableRouteCellStyle" TargetType="DataGridCell">
+                    <Style x:Key="EditableRouteCellStyle" TargetType="DataGridCell"
+                           BasedOn="{StaticResource {x:Type DataGridCell}}">
                         <Setter Property="IsEnabled" Value="{Binding IsRouteEditable}" />
                     </Style>
                 </DataGrid.Resources>

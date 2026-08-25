@@ -8,6 +8,30 @@
         <Style TargetType="{x:Type Window}">
             <Setter Property="Icon" Value="/Assets/NetRouteStudio.ico" />
         </Style>
+        <Style TargetType="{x:Type ToolTip}">
+            <Setter Property="MaxWidth" Value="720" />
+            <Setter Property="Placement" Value="Mouse" />
+            <Setter Property="ContentTemplate">
+                <Setter.Value>
+                    <DataTemplate>
+                        <TextBlock Text="{Binding}" TextWrapping="Wrap" MaxWidth="680" />
+                    </DataTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style TargetType="{x:Type DataGridCell}">
+            <Setter Property="ToolTip"
+                    Value="{Binding RelativeSource={RelativeSource Self}, Path=Content.Text}" />
+            <Setter Property="ToolTipService.InitialShowDelay" Value="350" />
+            <Setter Property="ToolTipService.BetweenShowDelay" Value="100" />
+            <Setter Property="ToolTipService.ShowDuration" Value="60000" />
+        </Style>
+        <Style TargetType="{x:Type ListBoxItem}">
+            <Setter Property="ToolTip" Value="{Binding RelativeSource={RelativeSource Self}, Path=Content}" />
+            <Setter Property="ToolTipService.InitialShowDelay" Value="350" />
+            <Setter Property="ToolTipService.BetweenShowDelay" Value="100" />
+            <Setter Property="ToolTipService.ShowDuration" Value="60000" />
+        </Style>
         <Style TargetType="{x:Type ScrollBar}">
             <Setter Property="Opacity" Value="0.42" />
             <Setter Property="Background" Value="Transparent" />
