@@ -1,8 +1,8 @@
 #ifndef MyAppVersion
-  #define MyAppVersion "1.0.4"
+  #define MyAppVersion "1.0.5"
 #endif
 #ifndef NumericVersion
-  #define NumericVersion "1.0.4.0"
+  #define NumericVersion "1.0.5.0"
 #endif
 #ifndef SourceDir
   #define SourceDir "..\artifacts\publish"
@@ -63,4 +63,4 @@ Name: "{group}\卸载 NetRoute Studio"; Filename: "{uninstallexe}"
 Name: "{autodesktop}\NetRoute Studio"; Filename: "{app}\{#MyAppExeName}"; WorkingDir: "{app}"; Tasks: desktopicon
 
 [Run]
-Filename: "{app}\{#MyAppExeName}"; Description: "启动 NetRoute Studio"; Flags: nowait postinstall skipifsilent
+Filename: "{app}\{#MyAppExeName}"; Description: "启动 NetRoute Studio"; WorkingDir: "{app}"; Flags: nowait postinstall skipifsilent shellexec
