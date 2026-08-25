@@ -26,6 +26,17 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
     public string ApplicationName => "NetRoute Studio";
 
+    public string ApplicationVersion
+    {
+        get
+        {
+            var version = typeof(MainWindowViewModel).Assembly.GetName().Version;
+            return version is null ? "未知" : $"{version.Major}.{version.Minor}.{version.Build}";
+        }
+    }
+
+    public string ApplicationVersionDisplay => $"版本 {ApplicationVersion}";
+
     public bool IsRunningAsAdministrator { get; }
 
     public string PrivilegeStatus { get; }

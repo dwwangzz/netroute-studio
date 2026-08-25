@@ -46,6 +46,7 @@ public partial class MainWindow : Window
         _networkTestDialogService = networkTestDialogService;
         _controlledCommandDialogService = controlledCommandDialogService;
         DataContext = viewModel;
+        VersionText.Text = foundationViewModel.ApplicationVersionDisplay;
         Highlight(RouteManagementButton);
         Loaded += OnLoaded;
     }

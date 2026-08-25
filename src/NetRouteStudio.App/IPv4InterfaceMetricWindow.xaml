@@ -1,6 +1,7 @@
 <Window x:Class="NetRouteStudio.App.IPv4InterfaceMetricWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:controls="clr-namespace:NetRouteStudio.App.Controls"
         Title="网卡跃点管理" Width="1100" Height="650" MinWidth="880" MinHeight="540"
         WindowStartupLocation="CenterOwner" Background="#F3F6FA">
     <Grid Margin="22">
@@ -73,5 +74,7 @@
             <TextBlock Text="{Binding StatusMessage}" Foreground="#4B5563" VerticalAlignment="Center" />
             <Button Content="关闭" IsCancel="True" HorizontalAlignment="Right" Padding="20,8" />
         </Grid>
+        <controls:LoadingIndicator IsActive="{Binding IsLoading}" Message="正在加载网卡跃点信息…"
+                                   HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,58,0,0" Panel.ZIndex="20" />
     </Grid>
 </Window>

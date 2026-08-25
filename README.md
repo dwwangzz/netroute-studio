@@ -146,27 +146,27 @@ dotnet test NetRouteStudio.sln --no-build --configuration Release --maxcpucount:
 
 ```powershell
 dotnet restore src/NetRouteStudio.App/NetRouteStudio.App.csproj --configfile NuGet.Config --runtime win-x64 --disable-parallel
-dotnet publish src/NetRouteStudio.App/NetRouteStudio.App.csproj --no-restore --configuration Release --runtime win-x64 --self-contained false --output artifacts/release/NetRouteStudio-1.0.5-win-x64
+dotnet publish src/NetRouteStudio.App/NetRouteStudio.App.csproj --no-restore --configuration Release --runtime win-x64 --self-contained false --output artifacts/release/NetRouteStudio-1.0.7-win-x64
 ```
 
 自包含版（目标电脑无需安装 .NET）：
 
 ```powershell
-dotnet publish src/NetRouteStudio.App/NetRouteStudio.App.csproj --no-restore --configuration Release --runtime win-x64 --self-contained true --output artifacts/release/NetRouteStudio-1.0.5-win-x64-self-contained
+dotnet publish src/NetRouteStudio.App/NetRouteStudio.App.csproj --no-restore --configuration Release --runtime win-x64 --self-contained true --output artifacts/release/NetRouteStudio-1.0.7-win-x64-self-contained
 ```
 
 本地生成安装 EXE 还需要安装 [Inno Setup 6](https://jrsoftware.org/isdl.php)。先将自包含输出目录指定为 `artifacts/publish`，再执行：
 
 ```powershell
 & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" `
-  "/DMyAppVersion=1.0.5" `
-  "/DNumericVersion=1.0.5.0" `
+  "/DMyAppVersion=1.0.7" `
+  "/DNumericVersion=1.0.7.0" `
   "/DSourceDir=$((Resolve-Path 'artifacts/publish').Path)" `
   "/DOutputDir=$((Resolve-Path 'artifacts').Path)" `
   "installer\NetRouteStudio.iss"
 ```
 
-输出文件为 `artifacts\NetRouteStudio-v1.0.5-win-x64-setup.exe`。
+输出文件为 `artifacts\NetRouteStudio-v1.0.7-win-x64-setup.exe`。
 
 ### 常见问题
 
@@ -181,7 +181,7 @@ dotnet publish src/NetRouteStudio.App/NetRouteStudio.App.csproj --no-restore --c
 
 日志写入 `%LOCALAPPDATA%\NetRouteStudio\logs`，按天滚动并保留 14 个文件。
 
-当前稳定版本：`1.0.5`。详细变化见 [CHANGELOG.md](CHANGELOG.md)。
+当前稳定版本：`1.0.7`。详细变化见 [CHANGELOG.md](CHANGELOG.md)。
 
 ## GitHub Actions 发布
 
@@ -196,6 +196,6 @@ dotnet publish src/NetRouteStudio.App/NetRouteStudio.App.csproj --no-restore --c
 - 两个发布文件各自对应的 `.sha256` 校验文件。
 
 ```powershell
-git tag v1.0.5
-git push origin v1.0.5
+git tag v1.0.7
+git push origin v1.0.7
 ```

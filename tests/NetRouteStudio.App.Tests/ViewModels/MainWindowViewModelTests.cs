@@ -15,6 +15,8 @@ public sealed class MainWindowViewModelTests
             new StubNetworkAdapterService([]));
 
         viewModel.ApplicationName.Should().Be("NetRoute Studio");
+        viewModel.ApplicationVersion.Should().MatchRegex(@"^\d+\.\d+\.\d+$");
+        viewModel.ApplicationVersionDisplay.Should().Be($"版本 {viewModel.ApplicationVersion}");
         viewModel.IsRunningAsAdministrator.Should().BeTrue();
         viewModel.PrivilegeStatus.Should().Be("管理员权限：已获取");
         viewModel.StatusMessage.Should().Be("应用基础模块已就绪");
